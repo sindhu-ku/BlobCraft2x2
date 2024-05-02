@@ -22,7 +22,6 @@ class PsqlDB:
         return url_template.format(**self.config)
 
     def get_years_months(self):
-
         year_st = '{:04d}'.format(self.run_start.year)
         month_st = '{:02d}'.format(self.run_start.month)
 
@@ -68,13 +67,18 @@ class PsqlDB:
         return result_data
 
     def dump_to_json(self, result_data):
+        formatted_data = [{'cryostat pressure': entry[0], 'timestamp': datetime.datetime.utcfromtimestamp(entry[1] / 1e3)} for entry in result_data]
 
-        formatted_data = [{'cryostat pressure': entry[0], 'timestamp': datetime.datetime.utcfromtimestamp(entry[1] / 1000.0)} for entry in result_data]
-        with open(f'cryostat-pressure_{self.run_start}_{self.run_end}.json', 'w') as json_file:
-            json.dump(formatted_data, json_file, default=str, indent=4)
+        def custom_json_serializer(obj):
+            if isinstance(obj, datetime.datetime):
+                return obj.isoformat()  # Convert datetime to ISO 8601 format
+            else:
+                return obj  # Return original value for other types
+
+        with open(f'cryostat-pressure_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json', 'w') as json_file:
+            json.dump(formatted_data, json_file, default=custom_json_serializer, indent=4)
 
     def plot_cryo_pressure(self, result_data):
-        # Convert UTC timestamps to actual timestamps
         timestamps = [datetime.datetime.utcfromtimestamp(entry[1] / 1e3) for entry in result_data]
         pressures = [entry[0]*1e3 for entry in result_data]
 
