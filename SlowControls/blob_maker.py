@@ -1,41 +1,43 @@
 from DB import *
+import yaml
 
-def run_blob_maker(run_start, run_end, plot=False, config=None):
+def run_blob_maker(run_start=0., run_end=0., config_file='', influx_data_dict=None):
 
     print(f"----------------------------------------Fetching data for the time period {run_start} to {run_end}----------------------------------------")
 
-    psql_config_file = config['psql']
-    psql = PsqlDB(psql_config_file, run_start, run_end)
-    cryo_press = psql.fetch_data()
-    psql.dump_to_json(cryo_press)
+    config = None
+    with open(config_file, 'r') as yaml_file:
+        config=yaml.safe_load(yaml_file)
 
-    influx_config_file = config['influxdb']
-    influx_manager = InfluxDBManager(influx_config_file, "gizmo", "resistance", run_start, run_end)
-    gizmo_res = influx_manager.fetch_data()
-    influx_manager.dump_to_json(gizmo_res)
+    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end).fetch_data()
+    InfluxDBManager(config=config['influxdb'], data_dict=influx_data_dict, run_start=run_start, run_end=run_end).fetch_data()
 
-    if plot:
-        print("\n")
-        print(f"----------------------------------------Making validation plots----------------------------------------")
-        psql.plot_cryo_pressure(cryo_press)
-        influx_manager.plot_data(gizmo_res)
 
 
 def main():
 
     start = datetime.datetime.now()
 
-    run_start = '2024-04-10 18:09:59.804494'
-    run_end = '2024-04-11 18:09:59.804494'
-    plot = False
+    run_start = '2024-05-01 18:09:59.804494'
+    run_end = '2024-05-02 18:09:59.804494'
 
-    config_filenames = {
-        'influxdb': 'config/influxdb_config.yaml',
-        'psql': 'config/psql_config.yaml',
-        'prometheus': ''
+    config_filename = 'config/DB_config.yaml'
+
+    influx_data_dict = {
+       'gizmo': [['resistance'], [['resistance']]],
+       'module0_mpod0': [['PACMAN&FANS', 'VGAs', 'RTDs'], [['voltage', 'current', 'channel_temperature', 'channel_name']]],
+       'module1_mpod0': [['PACMAN&FANS', 'VGAs', 'RTDs'], [['voltage', 'current', 'channel_temperature', 'channel_name']]],
+       'module2_mpod1': [['PACMAN&FANS', 'VGAs', 'RTDs'], [['voltage', 'current', 'channel_temperature', 'channel_name']]],
+       'module3_mpod1': [['PACMAN&FANS', 'VGAs', 'RTDs'], [['voltage', 'current', 'channel_temperature', 'channel_name']]],
+       'HVmonitoring': [['SPELLMAN_HV', 'Raspi'], [['Voltage', 'Current'], ['Temperature']]],
+       'VME_crate01': [['temperature', 'electrical_params'], [['channel_name','temperature'],['channel_name', 'voltage_sens', 'voltage_terminal', 'current']]],
+       'VME_crate23': [['temperature', 'electrical_params'], [['channel_name','temperature'],['channel_name', 'voltage_sens', 'voltage_terminal', 'current']]],
+       'ADC_crate': [['temperature', 'electrical_params'], [['channel_name','temperature'], ['channel_name', 'voltage_sens', 'voltage_terminal', 'current']]],
+       'lrs_monitor': [['sipm_bias'], [['chan_nr', 'pos', 'value']]],
+       'pt100' : [['temp'],[['pos', 'sens', 'value']]]
     }
 
-    run_blob_maker(run_start, run_end, plot, config_filenames)
+    run_blob_maker(run_start, run_end, config_filename, influx_data_dict)
 
     end = datetime.datetime.now()
     print("\n")

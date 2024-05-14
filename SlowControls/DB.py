@@ -4,21 +4,17 @@ import json
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
 import matplotlib.pyplot as plt
+import pandas as pd
 
 class PsqlDB:
 
-    def __init__(self, config_yaml, run_start, run_end):
+    def __init__(self, config, run_start, run_end):
         print("\n")
         print("**********************************************Querying PostgreSQL Database**********************************************")
-        self.config_yaml = config_yaml
+        self.config = config
         self.run_start = datetime.datetime.strptime(run_start, '%Y-%m-%d %H:%M:%S.%f')
         self.run_end = datetime.datetime.strptime(run_end, '%Y-%m-%d %H:%M:%S.%f')
-        self.config = self.load_config()
         self.url = self.create_url()
-
-    def load_config(self):
-        with open(self.config_yaml, 'r') as yaml_file:
-            return yaml.safe_load(yaml_file)
 
     def create_url(self):
         url_template = "postgresql+psycopg2://{username}:{password}@{hostname}/{dbname}"
@@ -63,10 +59,13 @@ class PsqlDB:
                 result = connection.execute(query)
                 result_data.extend(result.all())
 
-        return result_data
+        self.dump_to_json(result_data)
 
     def dump_to_json(self, result_data):
-        formatted_data = [{'cryostat pressure': entry[0], 'timestamp': datetime.datetime.utcfromtimestamp(entry[1] / 1e3)} for entry in result_data]
+        if not result_data:
+            print(f"WARNING: No data found for Cryostat pressure for the given time period")
+
+        formatted_data = [{'cryostat pressure': entry[0], 'time': datetime.datetime.utcfromtimestamp(entry[1] / 1e3)} for entry in result_data]
 
         def custom_json_serializer(obj):
             if isinstance(obj, datetime.datetime):
@@ -80,68 +79,49 @@ class PsqlDB:
 
         print(f"Dumping crysostat pressure data to {json_filename}")
 
-    def plot_cryo_pressure(self, result_data):
-        timestamps = [datetime.datetime.utcfromtimestamp(entry[1] / 1e3) for entry in result_data]
-        pressures = [entry[0]*1e3 for entry in result_data]
-
-        plt.plot(timestamps, pressures)
-        plt.xlabel('Time')
-        plt.ylabel('Cryostat Pressure (mbar)')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        pltname = f'cryostat-pressure_{self.run_start.isoformat()}_{self.run_end.isoformat()}.png'
-        plt.savefig(pltname)
-        plt.close()
-
-        print(f"Crysostat pressure data plotted and saved as {pltname}")
 
 class InfluxDBManager:
-
-    def __init__(self, config_yaml, database, variable, run_start, run_end):
+    def __init__(self, config, data_dict, run_start, run_end):
         print("\n")
         print("**********************************************Querying InfluxDB Database**********************************************")
-        self.config_yaml = config_yaml
-        self.database = database
-        self.variable = variable
+        self.config = config
+        self.data_dict = data_dict
         self.run_start = datetime.datetime.strptime(run_start, '%Y-%m-%d %H:%M:%S.%f')
         self.run_end = datetime.datetime.strptime(run_end, '%Y-%m-%d %H:%M:%S.%f')
-        self.host, self.port = self.load_config()
-        self.client = InfluxDBClient(host=self.host, port=self.port, database=self.database)
-
-    def load_config(self):
-        with open(self.config_yaml, 'r') as yaml_file:
-            config = yaml.safe_load(yaml_file)
-            return config['host'], config['port']
+        self.client = InfluxDBClient(host=self.config['host'], port=self.config['port'])
 
     def fetch_data(self):
-        start_time_ms = self.run_start.timestamp() * 1e3
-        end_time_ms = self.run_end.timestamp() * 1e3
+        for database, (measurements, variables) in self.data_dict.items():
+            if len(variables) == 1:
+                for measurement in measurements:
+                    result_data = self.fetch_measurement_data(database, measurement, variables[0])
+                    self.dump_to_json(database, measurement, variables[0], result_data)
+            else:
+                for measurement, measurement_variables in zip(measurements, variables):
+                    result_data = self.fetch_measurement_data(database, measurement, measurement_variables)
+                    self.dump_to_json(database, measurement, measurement_variables, result_data)
 
-        query = f"SELECT {self.variable} FROM {self.variable} WHERE time >= {int(start_time_ms)}ms and time <= {int(end_time_ms)}ms"
-        result = self.client.query(query)
+    def fetch_measurement_data(self, database, measurement, variables):
+        start_time_ms = int(self.run_start.timestamp() * 1e3)
+        end_time_ms = int(self.run_end.timestamp() * 1e3)
+
+        variable_str = ', '.join(variables)
+        query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms'
+        result = self.client.query(query, database=database)
         return result.raw
 
-    def dump_to_json(self, result_data):
+    def dump_to_json(self, database, measurement, variables, result_data):
+        json_filename = f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
+        series_values = result_data['series'][0]['values'] if 'series' in result_data and result_data['series'] else []
 
-        json_filename = f'{self.database}-{self.variable}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
-        formatted_data = [{f'{self.variable}': entry[1], 'timestamp': entry[0]} for entry in result_data['series'][0]['values']]
+        if series_values:
+            formatted_data = [{
+                'time': entry[0],
+                **{variables[i]: entry[i + 1] for i in range(len(entry) - 1)}
+            } for entry in series_values]
 
-        with open(json_filename, 'w') as json_file:
-            json.dump(formatted_data, json_file, indent=4)
-
-        print(f"Dumping {self.variable} from {self.database} to {json_filename}")
-
-    def plot_data(self, result_data):
-        timestamps = [datetime.datetime.strptime(entry[0], "%Y-%m-%dT%H:%M:%SZ") for entry in result_data['series'][0]['values']]
-        values = [entry[1] for entry in result_data['series'][0]['values']]
-
-        plt.plot(timestamps, values)
-        plt.xlabel('Time')
-        plt.ylabel(f'{self.variable}')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        pltname = f'{self.variable}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.png'
-        plt.savefig(pltname)
-        plt.close()
-
-        print(f"{self.variable} from {self.database} plotted and saved as {pltname}")
+            with open(json_filename, 'w') as json_file:
+                json.dump(formatted_data, json_file, indent=4)
+                print(f"Dumping {variables} from {measurement} from {database} to {json_filename}")
+        else:
+            print(f"WARNING: No data found for {variables} in {measurement} from {database}")
