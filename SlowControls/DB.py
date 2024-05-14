@@ -1,10 +1,8 @@
 import datetime
-import yaml
 import json
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
 import matplotlib.pyplot as plt
-import pandas as pd
 
 class PsqlDB:
 
