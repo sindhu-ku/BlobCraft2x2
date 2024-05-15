@@ -99,6 +99,8 @@ class InfluxDBManager:
 
     def fetch_data(self):
         for database, (measurements, variables) in self.data_dict.items():
+            if not variables:
+                variables = [self.fetch_measurement_fields(database, measurement) for measurement in measurements]
             if len(variables) == 1:
                 for measurement in measurements:
                     result_data = self.fetch_measurement_data(database, measurement, variables[0])
@@ -108,23 +110,32 @@ class InfluxDBManager:
                     result_data = self.fetch_measurement_data(database, measurement, measurement_variables)
                     self.dump_to_json(database, measurement, measurement_variables, result_data)
 
+    def fetch_measurement_fields(self, database, measurement):
+        result = self.client.query(f'SHOW FIELD KEYS ON "{database}" FROM "{measurement}"')
+        fields = [field['fieldKey'] for field in result.get_points()]
+        return fields
+
+
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
         start_time_ms = int(self.run_start.timestamp() * 1e3)
         end_time_ms = int(self.run_end.timestamp() * 1e3)
 
         query = ''
         variable_str = ', '.join(variables)
-        tag_keys_result = self.client.query(f'SHOW TAG KEYS ON "{database}" FROM "{measurement}"')
-        tag_keys = [tag['tagKey'] for tag in tag_keys_result.get_points()]
+
+        tag_keys = self.fetch_tag_keys(database, measurement)
         tag_keys_str = ', '.join(tag_keys)
 
         if tag_keys: query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms GROUP BY {tag_keys_str}'
         else:  query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms'
-
         result = self.client.query(query, database=database)
 
         return result
 
+    def fetch_tag_keys(self, database, measurement):
+        tag_keys_result = self.client.query(f'SHOW TAG KEYS ON "{database}" FROM "{measurement}"')
+        tag_keys = [tag['tagKey'] for tag in tag_keys_result.get_points()]
+        return tag_keys
 
     def dump_to_json(self, database, measurement, variables, result_data):
         json_filename = f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
