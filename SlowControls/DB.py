@@ -3,6 +3,8 @@ import json
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
 import matplotlib.pyplot as plt
+import pandas as pd
+import pytz
 
 class PsqlDB:
 
@@ -53,7 +55,7 @@ class PsqlDB:
                 table_name = f'sqlt_data_1_{y}_{m}'
 
                 tab = dbq.table(table_name, dbq.Column("t_stamp"), dbq.Column("floatvalue"), dbq.Column("tagid"))
-                query = dbq.select(tab.c.floatvalue, tab.c.t_stamp).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
+                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
 
                 result = connection.execute(query)
                 result_data.extend(result.all())
@@ -65,27 +67,22 @@ class PsqlDB:
             print(f"WARNING: No data found for Cryostat pressure for the given time period")
             return
 
-        formatted_data = []
-        last_timestamp = None
-        subsample_delta = datetime.timedelta(seconds=self.subsample) if self.subsample else None
+        df = pd.DataFrame(result_data, columns=['time', 'cryostat_pressure'])
+        df['time'] = pd.to_datetime(df['time'], unit='ms')
+        if self.subsample is not None:
+            df_resampled = df.set_index('time').resample(self.subsample).mean().dropna().reset_index()
+            result_data = df_resampled.values.tolist()
+        else:
+            result_data = df.values.tolist()
 
-        for entry in result_data:
-            timestamp = datetime.datetime.utcfromtimestamp(entry[1] / 1e3)
-            if last_timestamp is None or (subsample_delta and timestamp - last_timestamp >= subsample_delta):
-                formatted_data.append({'cryostat pressure': entry[0], 'time': timestamp})
-                last_timestamp = timestamp
-
-        def custom_json_serializer(obj):
-            if isinstance(obj, datetime.datetime):
-                return obj.isoformat()  # Convert datetime to ISO 8601 format
-            else:
-                return obj  # Return original value for other types
+        formatted_data = [{'cryostat pressure': entry[1], 'time': pd.to_datetime(entry[0], unit='ms', utc=True).isoformat()} for entry in result_data]
 
         json_filename = f'cryostat-pressure_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
         with open(json_filename, 'w') as json_file:
-            json.dump(formatted_data, json_file, default=custom_json_serializer, indent=4)
+            json.dump(formatted_data, json_file, indent=4)
 
-        print(f"Dumping crysostat pressure data to {json_filename}")
+        print(f"Dumping cryostat pressure data to {json_filename}")
+
 
 
 class InfluxDBManager:
@@ -114,34 +111,50 @@ class InfluxDBManager:
         start_time_ms = int(self.run_start.timestamp() * 1e3)
         end_time_ms = int(self.run_end.timestamp() * 1e3)
 
+        query = ''
         variable_str = ', '.join(variables)
-        query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms'
+        tag_keys_result = self.client.query(f'SHOW TAG KEYS ON "{database}" FROM "{measurement}"')
+        tag_keys = [tag['tagKey'] for tag in tag_keys_result.get_points()]
+        tag_keys_str = ', '.join(tag_keys)
+
+        if tag_keys: query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms GROUP BY {tag_keys_str}'
+        else:  query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms'
+
         result = self.client.query(query, database=database)
-        return result.raw
+
+        return result
+
 
     def dump_to_json(self, database, measurement, variables, result_data):
         json_filename = f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
-        series_values = result_data['series'][0]['values'] if 'series' in result_data and result_data['series'] else []
 
-        if not series_values:
+        if not result_data:
             print(f"WARNING: No data found for {variables} in {measurement} from {database}")
             return
 
         formatted_data = []
-        last_timestamp = None
-        subsample_delta = datetime.timedelta(seconds=self.subsample) if self.subsample else None
+        for key, data_points in result_data.items():
+            measurement_name, tags_dict = key
+            df = pd.DataFrame(data_points)
+            df['time'] = pd.to_datetime(df['time'])
 
+            if self.subsample is not None:
+                df_resampled = df.resample(self.subsample, on='time').mean().dropna()
+                resampled_entries = df_resampled.reset_index().to_dict('records')
+            else:
+                resampled_entries = df.to_dict('records')
 
-        for entry in series_values:
-            timestamp_str = entry[0]
-            timestamp = datetime.datetime.fromisoformat(timestamp_str[:-1])
-            if last_timestamp is None or (subsample_delta and timestamp - last_timestamp >= subsample_delta):
-                formatted_data.append({
-                    'time': timestamp_str,
-                    **{variables[i]: entry[i + 1] for i in range(len(entry) - 1)}
-                    })
-                last_timestamp = timestamp
+            for entry in resampled_entries:
+                formatted_entry = {
+                'time': entry['time'].isoformat(),
+                **{var: entry[var] for var in variables}
+                }
+                if tags_dict:
+                    formatted_entry['tags'] = tags_dict
+
+                formatted_data.append(formatted_entry)
 
         with open(json_filename, 'w') as json_file:
             json.dump(formatted_data, json_file, indent=4)
-            print(f"Dumping {variables} from {measurement} from {database} to {json_filename}")
+
+        print(f"Dumping data from {measurement} in {database} to {json_filename}")

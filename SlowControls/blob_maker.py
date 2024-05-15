@@ -16,8 +16,8 @@ def main():
     with open(config_file, 'r') as yaml_file:
         config=yaml.safe_load(yaml_file)
 
-    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample=1).fetch_data()
-    InfluxDBManager(config=config['influxdb'], run_start=run_start, run_end=run_end, subsample=1).fetch_data()
+    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample="1S").fetch_data()
+    InfluxDBManager(config=config['influxdb'], run_start=run_start, run_end=run_end, subsample="1S").fetch_data()
 
     end = datetime.datetime.now()
 
