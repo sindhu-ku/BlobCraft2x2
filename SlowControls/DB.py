@@ -62,12 +62,13 @@ class PsqlDB:
 
         self.dump_to_json(result_data)
 
-    def dump_to_json(self, result_data):
-        if not result_data:
+    def dump_to_json(self, data):
+
+        if not data:
             print(f"WARNING: No data found for Cryostat pressure for the given time period")
             return
 
-        df = pd.DataFrame(result_data, columns=['time', 'cryostat_pressure'])
+        df = pd.DataFrame(data, columns=['time', 'cryostat_pressure'])
         df['time'] = pd.to_datetime(df['time'], unit='ms')
         if self.subsample is not None:
             df_resampled = df.set_index('time').resample(self.subsample).mean().dropna().reset_index()
