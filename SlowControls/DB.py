@@ -115,7 +115,6 @@ class InfluxDBManager:
         fields = [field['fieldKey'] for field in result.get_points()]
         return fields
 
-
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
         start_time_ms = int(self.run_start.timestamp() * 1e3)
         end_time_ms = int(self.run_end.timestamp() * 1e3)
