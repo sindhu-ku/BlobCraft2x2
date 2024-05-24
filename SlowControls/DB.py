@@ -46,6 +46,11 @@ class PsqlDB:
 
         engine = dbq.create_engine(self.url)
         connection = engine.connect()
+        inspector = dbq.inspect(engine)
+        # tables = inspector.get_table_names()
+        # print("Available tables:")
+        # for table in tables:
+        #     print(table)
 
         result_data = []
 
@@ -53,12 +58,16 @@ class PsqlDB:
             for m in months:
 
                 table_name = f'sqlt_data_1_{y}_{m}'
+                # columns = inspector.get_columns(table_name)
+                # column_names = [column['name'] for column in columns]
+                # print("Column Names:", column_names)
 
                 tab = dbq.table(table_name, dbq.Column("t_stamp"), dbq.Column("floatvalue"), dbq.Column("tagid"))
-                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
+                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue, tab.c.tagid).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
 
                 result = connection.execute(query)
                 result_data.extend(result.all())
+                print(result_data)
 
         self.dump_to_json(result_data)
 
@@ -91,30 +100,15 @@ class InfluxDBManager:
         print("\n")
         print("**********************************************Querying InfluxDB Database**********************************************")
         self.config = config
-        self.data_dict = config.get('influx_data_dict', {})
         self.run_start = datetime.datetime.strptime(run_start, '%Y-%m-%d %H:%M:%S.%f')
         self.run_end = datetime.datetime.strptime(run_end, '%Y-%m-%d %H:%M:%S.%f')
         self.client = InfluxDBClient(host=self.config['host'], port=self.config['port'])
         self.subsample = subsample
 
-    def fetch_data(self):
-        for database, (measurements, variables) in self.data_dict.items():
-            if not variables:
-                variables = [self.fetch_measurement_fields(database, measurement) for measurement in measurements]
-            if len(variables) == 1:
-                for measurement in measurements:
-                    result_data = self.fetch_measurement_data(database, measurement, variables[0])
-                    self.dump_to_json(database, measurement, variables[0], result_data)
-            else:
-                for measurement, measurement_variables in zip(measurements, variables):
-                    result_data = self.fetch_measurement_data(database, measurement, measurement_variables)
-                    self.dump_to_json(database, measurement, measurement_variables, result_data)
-
     def fetch_measurement_fields(self, database, measurement):
         result = self.client.query(f'SHOW FIELD KEYS ON "{database}" FROM "{measurement}"')
         fields = [field['fieldKey'] for field in result.get_points()]
         return fields
-
 
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
         start_time_ms = int(self.run_start.timestamp() * 1e3)
@@ -129,7 +123,6 @@ class InfluxDBManager:
         if tag_keys: query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms GROUP BY {tag_keys_str}'
         else:  query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms'
         result = self.client.query(query, database=database)
-
         return result
 
     def fetch_tag_keys(self, database, measurement):
@@ -137,8 +130,7 @@ class InfluxDBManager:
         tag_keys = [tag['tagKey'] for tag in tag_keys_result.get_points()]
         return tag_keys
 
-    def dump_to_json(self, database, measurement, variables, result_data):
-        json_filename = f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
+    def get_subsampled_formatted_data(self, database, measurement, variables, result_data):
 
         if not result_data:
             print(f"WARNING: No data found for {variables} in {measurement} from {database}")
@@ -165,8 +157,25 @@ class InfluxDBManager:
                     formatted_entry['tags'] = tags_dict
 
                 formatted_data.append(formatted_entry)
+        return formatted_data
+
+    def calc_grounding(self, formatted_data):
+        ground_impedance = self.config['ground_impedance']
+        ground_impedance_err = self.config['ground_impedance_err']
+        for entry in formatted_data:
+            if 'resistance' in entry:
+                if (ground_impedance-ground_impedance_err) <= entry['resistance'] <= (ground_impedance+ground_impedance_err):
+                    entry['ground_status'] = "good detector ground"
+                else:
+                    entry['ground_status'] = "bad detector ground"
+            else:
+                print("ERROR: NO resistance field in data. This function can only be used to calculate good or bad grounding with gizmo")
+        return formatted_data
+
+    def dump_to_json(self, data, database, measurement):
+        json_filename = f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
 
         with open(json_filename, 'w') as json_file:
-            json.dump(formatted_data, json_file, indent=4)
+            json.dump(data, json_file, indent=4)
 
-        print(f"Dumping data from {measurement} in {database} to {json_filename}")
+        print(f"Dumping data to {json_filename}")

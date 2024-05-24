@@ -1,5 +1,6 @@
 from DB import *
 import yaml
+from SC_utils import dump_SC_data
 
 def main():
 
@@ -16,8 +17,10 @@ def main():
     with open(config_file, 'r') as yaml_file:
         config=yaml.safe_load(yaml_file)
 
-    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample="1S").fetch_data()
-    InfluxDBManager(config=config['influxdb'], run_start=run_start, run_end=run_end, subsample="1S").fetch_data()
+    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample="60S").fetch_data()
+    influxDB = InfluxDBManager(config=config['influxdb'], run_start=run_start, run_end=run_end, subsample="60S")
+
+    dump_SC_data(influxDB=influxDB, config=config['influxdb'], dump_all_data=False)
 
     end = datetime.datetime.now()
 
