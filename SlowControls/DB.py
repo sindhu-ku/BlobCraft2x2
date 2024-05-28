@@ -15,6 +15,8 @@ class PsqlDB:
         self.run_start = datetime.datetime.strptime(run_start, '%Y-%m-%d %H:%M:%S.%f')
         self.run_end = datetime.datetime.strptime(run_end, '%Y-%m-%d %H:%M:%S.%f')
         self.url = self.create_url()
+        self.engine = dbq.create_engine(self.url)
+        self.connection = self.engine.connect()
         self.subsample = subsample
 
     def create_url(self):
@@ -38,46 +40,66 @@ class PsqlDB:
 
         return years, months
 
-    def fetch_data(self):
-        run_start_utime = datetime.datetime.timestamp(self.run_start) * 1e3
-        run_end_utime = datetime.datetime.timestamp(self.run_end) * 1e3
-
-        years, months = self.get_years_months()
-
-        engine = dbq.create_engine(self.url)
-        connection = engine.connect()
-        inspector = dbq.inspect(engine)
+    def fetch_data(self, variable):
+        # inspector = dbq.inspect(self.engine)
         # tables = inspector.get_table_names()
         # print("Available tables:")
         # for table in tables:
         #     print(table)
+        #
+        # table_name = 'prm_table'
+        # columns = inspector.get_columns(table_name)
+        # column_names = [column['name'] for column in columns]
+        # print("Column Names:", column_names)
 
+        if variable=="cryostat_pressure":
+            result_data = self.get_cryostat_press_data()
+        elif variable=="electron_lifetime":
+            result_data = self.get_purity_monitor_data()
+        else:
+            print("ERROR: Cannot access {variable}. I can only currently handle 'cryostat_pressure' and 'electron_lifetime'")
+            return
+        formatted_data = self.get_subsampled_formatted_data(result_data, variable)
+        self.dump_to_json(formatted_data, variable)
+
+    def get_data(self, table_name, columns, conditions):
         result_data = []
+        tab = dbq.table(table_name, *columns)
+        query = dbq.select(*[col for col in columns]).select_from(tab).where(conditions)
+        result = self.connection.execute(query)
+        result_data.extend(result.all())
+        return result_data
 
+    def get_cryostat_press_data(self):
+        result_data = []
+        years, months = self.get_years_months()
+        run_start_utime = datetime.datetime.timestamp(self.run_start) * 1e3
+        run_end_utime = datetime.datetime.timestamp(self.run_end) * 1e3
         for y in years:
             for m in months:
-
-                table_name = f'sqlt_data_1_{y}_{m}'
-                # columns = inspector.get_columns(table_name)
-                # column_names = [column['name'] for column in columns]
-                # print("Column Names:", column_names)
-
+                table_name = f"{self.config['cryopress_table_prefix']}_{y}_{m}"
                 tab = dbq.table(table_name, dbq.Column("t_stamp"), dbq.Column("floatvalue"), dbq.Column("tagid"))
-                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue, tab.c.tagid).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
-
-                result = connection.execute(query)
+                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
+                result = self.connection.execute(query)
                 result_data.extend(result.all())
-                print(result_data)
+        return result_data
 
-        self.dump_to_json(result_data)
+    def get_purity_monitor_data(self):
+        result_data= []
+        table_name = str(self.config['purity_mon_table'])
+        tab = dbq.table(table_name, dbq.Column("timestamp"), dbq.Column("prm_lifetime"))
+        query = dbq.select(tab.c.timestamp, tab.c.prm_lifetime).select_from(tab).where(dbq.and_(tab.c.timestamp >= self.run_start, tab.c.timestamp <= self.run_end))
+        result = self.connection.execute(query)
+        result_data.extend(result.all())
+        return result_data
 
-    def dump_to_json(self, data):
+    def get_subsampled_formatted_data(self, data, variable):
 
         if not data:
-            print(f"WARNING: No data found for Cryostat pressure for the given time period")
+            print(f"WARNING: No data found for {variable} for the given time period")
             return
 
-        df = pd.DataFrame(data, columns=['time', 'cryostat_pressure'])
+        df = pd.DataFrame(data, columns=['time', variable])
         df['time'] = pd.to_datetime(df['time'], unit='ms')
         if self.subsample is not None:
             df_resampled = df.set_index('time').resample(self.subsample).mean().dropna().reset_index()
@@ -85,13 +107,16 @@ class PsqlDB:
         else:
             result_data = df.values.tolist()
 
-        formatted_data = [{'cryostat pressure': entry[1], 'time': pd.to_datetime(entry[0], unit='ms', utc=True).isoformat()} for entry in result_data]
+        formatted_data = [{variable: entry[1], 'time': pd.to_datetime(entry[0], unit='ms', utc=True).isoformat()} for entry in result_data]
+        return formatted_data
 
-        json_filename = f'cryostat-pressure_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
+    def dump_to_json(self, formatted_data, variable):
+
+        json_filename = f'{variable}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
         with open(json_filename, 'w') as json_file:
             json.dump(formatted_data, json_file, indent=4)
 
-        print(f"Dumping cryostat pressure data to {json_filename}")
+        print(f"Dumping {variable} data to {json_filename}")
 
 
 

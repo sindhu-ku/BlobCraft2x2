@@ -6,8 +6,8 @@ def main():
 
     start = datetime.datetime.now()
 
-    run_start = '2024-05-01 18:09:59.804494'
-    run_end = '2024-05-02 18:09:59.804494'
+    run_start = '2024-05-22 18:09:59.804494'
+    run_end = '2024-05-23 18:09:59.804494'
 
     config_file = 'config/DB_config.yaml'
 
@@ -17,7 +17,8 @@ def main():
     with open(config_file, 'r') as yaml_file:
         config=yaml.safe_load(yaml_file)
 
-    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample="60S").fetch_data()
+    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample="60S").fetch_data(variable="cryostat_pressure")
+    PsqlDB(config=config['psql'], run_start=run_start, run_end=run_end, subsample="60S").fetch_data(variable="electron_lifetime")
     influxDB = InfluxDBManager(config=config['influxdb'], run_start=run_start, run_end=run_end, subsample="60S")
 
     dump_SC_data(influxDB=influxDB, config=config['influxdb'], dump_all_data=False)
