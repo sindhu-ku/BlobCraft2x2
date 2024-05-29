@@ -55,7 +55,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename='', dump_all_data=
     else:
         ground_tag = get_gizmo_ground_tag(influxDB=influxDB, database="gizmo", measurement="resistance", \
                         ground_impedance=config_influx['ground_impedance'], ground_impedance_err=config_influx['ground_impedance_err'], \
-                        subsample=config_influx['subsample_time'])
+                        subsample=config_influx['gizmo_subsample_time'])
         electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql['purity_mon_table'], last_value=True)
         data = {
         "Gizmo grounding": ground_tag,
@@ -64,7 +64,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename='', dump_all_data=
             "electron lifetime": electron_lifetime[1]
             }
         }
-    with open(json_filename, 'w') as json_file:
-        json.dump(data, json_file, indent=4)
+        with open(json_filename, 'w') as json_file:
+            json.dump(data, json_file, indent=4)
 
-    print(f"Data has been dumped into {json_filename}")
+        print(f"Data has been dumped into {json_filename}")
