@@ -1,4 +1,3 @@
-import datetime
 import json
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
@@ -6,18 +5,16 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 
-class PsqlDB:
+class PsqlDBManager:
 
-    def __init__(self, config, run_start, run_end, subsample=None):
-        print("\n")
-        print("**********************************************Querying PostgreSQL Database**********************************************")
+    def __init__(self, config, run_start, run_end):
+
         self.config = config
-        self.run_start = datetime.datetime.strptime(run_start, '%Y-%m-%d %H:%M:%S.%f')
-        self.run_end = datetime.datetime.strptime(run_end, '%Y-%m-%d %H:%M:%S.%f')
+        self.run_start = run_start
+        self.run_end = run_end
         self.url = self.create_url()
         self.engine = dbq.create_engine(self.url)
         self.connection = self.engine.connect()
-        self.subsample = subsample
 
     def create_url(self):
         url_template = "postgresql+psycopg2://{username}:{password}@{hostname}/{dbname}"
@@ -40,69 +37,48 @@ class PsqlDB:
 
         return years, months
 
-    def fetch_data(self, variable):
-        # inspector = dbq.inspect(self.engine)
-        # tables = inspector.get_table_names()
-        # print("Available tables:")
-        # for table in tables:
-        #     print(table)
-        #
-        # table_name = 'prm_table'
-        # columns = inspector.get_columns(table_name)
-        # column_names = [column['name'] for column in columns]
-        # print("Column Names:", column_names)
-
-        if variable=="cryostat_pressure":
-            result_data = self.get_cryostat_press_data()
-        elif variable=="electron_lifetime":
-            result_data = self.get_purity_monitor_data()
-        else:
-            print("ERROR: Cannot access {variable}. I can only currently handle 'cryostat_pressure' and 'electron_lifetime'")
-            return
-        formatted_data = self.get_subsampled_formatted_data(result_data, variable)
-        self.dump_to_json(formatted_data, variable)
-
-    def get_data(self, table_name, columns, conditions):
-        result_data = []
-        tab = dbq.table(table_name, *columns)
-        query = dbq.select(*[col for col in columns]).select_from(tab).where(conditions)
-        result = self.connection.execute(query)
-        result_data.extend(result.all())
-        return result_data
-
-    def get_cryostat_press_data(self):
+    def get_cryostat_press_data(self, table_prefix, tagid):
+        print("\n")
+        print("**********************************************Querying Cryostat pressure from PostgreSQL Database**********************************************")
         result_data = []
         years, months = self.get_years_months()
         run_start_utime = datetime.datetime.timestamp(self.run_start) * 1e3
         run_end_utime = datetime.datetime.timestamp(self.run_end) * 1e3
         for y in years:
             for m in months:
-                table_name = f"{self.config['cryopress_table_prefix']}_{y}_{m}"
+                table_name = f"{table_prefix}_{y}_{m}"
                 tab = dbq.table(table_name, dbq.Column("t_stamp"), dbq.Column("floatvalue"), dbq.Column("tagid"))
-                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(dbq.and_(tab.c.tagid == str(self.config['tagid']), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
+                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(dbq.and_(tab.c.tagid == str(tagid), tab.c.t_stamp >= str(int(run_start_utime)), tab.c.t_stamp <= str(int(run_end_utime))))
                 result = self.connection.execute(query)
                 result_data.extend(result.all())
         return result_data
 
-    def get_purity_monitor_data(self):
+    def get_purity_monitor_data(self, tablename, last_value=False):
+        print("\n")
+        print("**********************************************Querying Purity monitor electron lifetime from PostgreSQL Database**********************************************")
         result_data= []
-        table_name = str(self.config['purity_mon_table'])
-        tab = dbq.table(table_name, dbq.Column("timestamp"), dbq.Column("prm_lifetime"))
+        tab = dbq.table(tablename, dbq.Column("timestamp"), dbq.Column("prm_lifetime"))
         query = dbq.select(tab.c.timestamp, tab.c.prm_lifetime).select_from(tab).where(dbq.and_(tab.c.timestamp >= self.run_start, tab.c.timestamp <= self.run_end))
         result = self.connection.execute(query)
         result_data.extend(result.all())
-        return result_data
+        if last_value:
+            if result_data:
+                return result_data[len(result_data)-1]
+            else:
+                print(f"WARNING: No data found for the given time period")
+                return
+        else:
+            return result_data
 
-    def get_subsampled_formatted_data(self, data, variable):
-
+    def get_subsampled_formatted_data(self, data, variable, subsample=None):
         if not data:
             print(f"WARNING: No data found for {variable} for the given time period")
             return
 
         df = pd.DataFrame(data, columns=['time', variable])
         df['time'] = pd.to_datetime(df['time'], unit='ms')
-        if self.subsample is not None:
-            df_resampled = df.set_index('time').resample(self.subsample).mean().dropna().reset_index()
+        if subsample is not None:
+            df_resampled = df.set_index('time').resample(subsample).mean().dropna().reset_index()
             result_data = df_resampled.values.tolist()
         else:
             result_data = df.values.tolist()
@@ -121,14 +97,11 @@ class PsqlDB:
 
 
 class InfluxDBManager:
-    def __init__(self, config, run_start, run_end, subsample=None):
-        print("\n")
-        print("**********************************************Querying InfluxDB Database**********************************************")
+    def __init__(self, config, run_start, run_end):
         self.config = config
-        self.run_start = datetime.datetime.strptime(run_start, '%Y-%m-%d %H:%M:%S.%f')
-        self.run_end = datetime.datetime.strptime(run_end, '%Y-%m-%d %H:%M:%S.%f')
+        self.run_start = run_start
+        self.run_end = run_end
         self.client = InfluxDBClient(host=self.config['host'], port=self.config['port'])
-        self.subsample = subsample
 
     def fetch_measurement_fields(self, database, measurement):
         result = self.client.query(f'SHOW FIELD KEYS ON "{database}" FROM "{measurement}"')
@@ -136,6 +109,8 @@ class InfluxDBManager:
         return fields
 
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
+        print("\n")
+        print(f"**********************************************Querying {variables} in {measurement} from {database} from InfluxDB Database**********************************************")
         start_time_ms = int(self.run_start.timestamp() * 1e3)
         end_time_ms = int(self.run_end.timestamp() * 1e3)
 
@@ -155,7 +130,7 @@ class InfluxDBManager:
         tag_keys = [tag['tagKey'] for tag in tag_keys_result.get_points()]
         return tag_keys
 
-    def get_subsampled_formatted_data(self, database, measurement, variables, result_data):
+    def get_subsampled_formatted_data(self, database, measurement, variables, result_data, subsample=None):
 
         if not result_data:
             print(f"WARNING: No data found for {variables} in {measurement} from {database}")
@@ -167,8 +142,8 @@ class InfluxDBManager:
             df = pd.DataFrame(data_points)
             df['time'] = pd.to_datetime(df['time'])
 
-            if self.subsample is not None:
-                df_resampled = df.resample(self.subsample, on='time').mean().dropna()
+            if subsample is not None:
+                df_resampled = df.resample(subsample, on='time').mean().dropna()
                 resampled_entries = df_resampled.reset_index().to_dict('records')
             else:
                 resampled_entries = df.to_dict('records')
@@ -182,19 +157,6 @@ class InfluxDBManager:
                     formatted_entry['tags'] = tags_dict
 
                 formatted_data.append(formatted_entry)
-        return formatted_data
-
-    def calc_grounding(self, formatted_data):
-        ground_impedance = self.config['ground_impedance']
-        ground_impedance_err = self.config['ground_impedance_err']
-        for entry in formatted_data:
-            if 'resistance' in entry:
-                if (ground_impedance-ground_impedance_err) <= entry['resistance'] <= (ground_impedance+ground_impedance_err):
-                    entry['ground_status'] = "good detector ground"
-                else:
-                    entry['ground_status'] = "bad detector ground"
-            else:
-                print("ERROR: NO resistance field in data. This function can only be used to calculate good or bad grounding with gizmo")
         return formatted_data
 
     def dump_to_json(self, data, database, measurement):
