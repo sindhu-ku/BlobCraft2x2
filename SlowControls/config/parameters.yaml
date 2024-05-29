@@ -1,0 +1,25 @@
+influxdb:
+  mpod_dict:  &mpod_dict
+    [['PACMAN&FANS', 'VGAs', 'RTDs'], [['voltage', 'current', 'channel_temperature']]]
+  crate_dict: &crate_dict
+    [['temperature', 'electrical_params'], [['temperature'],[ 'voltage_sense', 'voltage_terminal', 'current']]]
+  influx_SC_data_dict:
+       gizmo: [['resistance'], []]
+       module0_mpod0: *mpod_dict
+       module1_mpod0: *mpod_dict
+       module2_mpod1: *mpod_dict
+       module3_mpod1: *mpod_dict
+       HVmonitoring: [['SPELLMAN_HV', 'Raspi'], [['Voltage', 'Current'], ['Temperature']]]
+       VME_crate01: *crate_dict
+       VME_crate23: *crate_dict
+       ADC_crate: *crate_dict
+       pt100: [['temp'],[['value']]]
+  ground_impedance: 242
+  ground_impedance_err: 10
+  subsample_time: "60S"
+
+psql:
+  cryopress_table_prefix: "sqlt_data_1"
+  cryopress_tagid: "34"
+  purity_mon_table: "prm_table"
+  subsample_time: "60S"
