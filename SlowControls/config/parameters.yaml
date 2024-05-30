@@ -22,7 +22,9 @@ influxdb:
   pick_off_resistance: 10.0 #Mohms
 
 psql:
-  cryopress_table_prefix: "sqlt_data_1"
+  cryo_table_prefix: "sqlt_data_1"
   cryopress_tagid: "34"
+  LAr_level_tagid: "37"
+  good_LAr_level: 500
   purity_mon_table: "prm_table"
   subsample_time: "60S"

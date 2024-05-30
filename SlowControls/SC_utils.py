@@ -30,15 +30,21 @@ def influx_blind_dump(influxDB):
             formatted_data = influxDB.get_subsampled_formatted_data(database, measurement, measurement_variables, result_data, subsample=config_influx["subsample_time"])
             influxDB.dump_to_json(formatted_data, database, measurement)
 
+def psql_json_dump(PsqlDB, data, varname, subsample=None):
+    subsampled_data = PsqlDB.get_subsampled_formatted_data(data,varname, subsample=subsample)
+    PsqlDB.dump_to_json(subsampled_data, varname)
+
 def psql_blind_dump(PsqlDB):
     subsample = config_psql["subsample_time"]
-    electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"])
-    subsampled_electron_lifetime = PsqlDB.get_subsampled_formatted_data(electron_lifetime,"electron_lifetime", subsample=subsample)
-    PsqlDB.dump_to_json(subsampled_electron_lifetime, "electron_lifetime")
 
-    cryostat_pressure = PsqlDB.get_cryostat_press_data(table_prefix=config_psql["cryopress_table_prefix"], tagid=config_psql["cryopress_tagid"])
-    subsampled_cryostat_pressure = PsqlDB.get_subsampled_formatted_data(cryostat_pressure, "cryostat_pressure", subsample=subsample)
-    PsqlDB.dump_to_json(subsampled_cryostat_pressure, "cryostat_pressure")
+    electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"])
+    psql_json_dump(PsqlDB, electron_lifetime, "electron_lifetime", subsample=subsample)
+
+    cryostat_pressure = PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["cryopress_tagid"])
+    psql_json_dump(PsqlDB, cryostat_pressure, "cryostat_pressure", subsample=subsample)
+
+    LAr_level = PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["LAr_level_tagid"])
+    psql_json_dump(PsqlDB, LAr_level, "LAr_level", subsample=subsample)
 
 def get_gizmo_ground_tag(influxDB):
     database="gizmo"
@@ -54,8 +60,7 @@ def get_gizmo_ground_tag(influxDB):
     bad_ground_values = []
 
     for entry in subsampled_data:
-        if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err:
-            bad_ground_values.append(entry)
+        if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err: bad_ground_values.append(entry)
 
     bag_ground_percent = len(bad_ground_values)*100./len(subsampled_data)
     if bad_ground_values: print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({bag_ground_percent}%) instances at these times: {bad_ground_values}")
@@ -115,6 +120,20 @@ def calculate_electric_fields(influxDB):
 
     return mean_voltage, pick_off_voltages, electric_fields
 
+def get_LAr_level_tag(PsqlDB):
+    LAr_level = PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["LAr_level_tagid"])
+    formatted_data = PsqlDB.get_subsampled_formatted_data(LAr_level, "LAr_level", subsample=None)
+    bad_level_values = []
+    tag = "good"
+    for entry in formatted_data:
+        if entry["LAr_level"] < config_psql["good_LAr_level"]:
+            bad_level_values.append(entry)
+            tag="bad"
+    if bad_level_values:
+        print(f"WARNING: Bad LAr level detected at {len(bad_level_values)}({len(bad_level_values)*100./len(formatted_data)}%) instances at these times: {bad_level_values}")
+
+    return tag
+
 def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=False):
 
     load_config(config_file)
@@ -124,7 +143,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
         psql_blind_dump(PsqlDB=PsqlDB)
     else:
         ground_tag, bad_grounds = get_gizmo_ground_tag(influxDB=influxDB)
-        LAr_tag = "bad"
+        LAr_tag = get_LAr_level_tag(PsqlDB=PsqlDB)
         electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], last_value=True)
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields(influxDB=influxDB)
 

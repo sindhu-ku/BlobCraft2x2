@@ -36,9 +36,9 @@ class PsqlDBManager:
 
         return years, months
 
-    def get_cryostat_press_data(self, table_prefix, tagid):
+    def get_cryostat_data(self, table_prefix, tagid):
         print("\n")
-        print("**********************************************Querying Cryostat pressure from PostgreSQL Database**********************************************")
+        print("**********************************************Querying Cryostat data from PostgreSQL Database**********************************************")
         result_data = []
         years, months = self.get_years_months()
         run_start_utime = datetime.datetime.timestamp(self.run_start) * 1e3
