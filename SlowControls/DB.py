@@ -67,7 +67,7 @@ class PsqlDBManager:
                 return result_data[len(result_data)-1]
             else:
                 print(f"WARNING: No data found for the given time period")
-                return
+                return(self.run_start, 0.0)
         else:
             return result_data
 
