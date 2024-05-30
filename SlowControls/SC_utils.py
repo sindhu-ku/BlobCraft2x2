@@ -64,7 +64,7 @@ def get_gizmo_ground_tag(influxDB):
 
     return tag
 
-def calculate_effective_shell_resistances(influxDB):
+def calculate_effective_shell_resistances(influxDB, V_set=0.0):
     database="HVmonitoring"
     measurement="Raspi"
     variables = ["CH0", "CH1", "CH2", "CH3"]
@@ -72,10 +72,12 @@ def calculate_effective_shell_resistances(influxDB):
     result_data = influxDB.fetch_measurement_data(database, measurement, variables)
     formatted_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=None)
 
-    effective_shell_resistances = []
-
-    for var in variables:
-        effective_shell_resistances.append(get_mean_measurement(formatted_data, var))
+    effective_shell_resistances = np.zeros(4)
+    R_pick=config_influx["pick_off_resistance"]
+    for i, var in enumerate(variables):
+        V_pick = get_mean_measurement(formatted_data, var)
+        R_eff = R_pick*((V_set/V_pick) -1)
+        effective_shell_resistances[i] = R_eff
 
     return effective_shell_resistances
 
@@ -87,16 +89,20 @@ def calculate_electric_fields(influxDB):
     result_data = influxDB.fetch_measurement_data(database, measurement, variables)
     formatted_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=None)
 
+    electric_fields =  np.zeros(4)
     mean_voltage = get_mean_measurement(formatted_data, variables[0])
-    electric_fields =  []
-    eff_resistance= calculate_effective_shell_resistances(influxDB=influxDB)
-    pick_off_resistance=config_influx["pick_off_resistance"]
+    if mean_voltage == 0.0:
+        print("WARNING: The set voltage from Spellman HV is 0.0!")
+        return electric_fields
+
+    eff_resistance= calculate_effective_shell_resistances(influxDB=influxDB, V_set=mean_voltage)
+    R_pick=config_influx["pick_off_resistance"]
     drift_dist=config_influx["drift_dist"]
 
-    for R in eff_resistance:
-        E = mean_voltage*(1-(pick_off_resistance/(pick_off_resistance+R)))/drift_dist
-        electric_fields.append(E)
-        
+    for i, R_eff in enumerate(eff_resistance):
+        E = mean_voltage*(1-(R_pick/(R_pick+R_eff)))/drift_dist
+        electric_fields[i] = E
+
     return electric_fields
 
 def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=False):
@@ -110,6 +116,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
         ground_tag = get_gizmo_ground_tag(influxDB=influxDB)
         electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], last_value=True)
         electric_fields = calculate_electric_fields(influxDB=influxDB)
+
         data = {
         "Gizmo grounding": ground_tag,
         "Purity monitor": {
