@@ -50,12 +50,12 @@ def get_gizmo_ground_tag(influxDB):
     result_data = influxDB.fetch_measurement_data(database, measurement, variables)
     subsampled_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=config_influx["subsample_time"])
 
-    tag = "good ground"
+    tag = "good"
     bad_ground_values = []
     for entry in subsampled_data:
         if "resistance" in entry:
             if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err:
-                tag = "bad ground"
+                tag = "bad"
                 bad_ground_values.append(entry)
         else:
             print("ERROR: No resistance field in data. This function can only be used to calculate good or bad grounding with gizmo")
@@ -85,11 +85,13 @@ def calculate_electric_fields(influxDB):
     database="HVmonitoring"
     measurement="SPELLMAN_HV"
     variables = ["Voltage"]
-
+    electric_fields =  np.zeros(4)
     result_data = influxDB.fetch_measurement_data(database, measurement, variables)
     formatted_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=None)
 
-    electric_fields =  np.zeros(4)
+    if not formatted_data:
+        return electric_fields
+
     mean_voltage = get_mean_measurement(formatted_data, variables[0])
     if mean_voltage == 0.0:
         print("WARNING: The set voltage from Spellman HV is 0.0!")
@@ -114,14 +116,17 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
         psql_blind_dump(PsqlDB=PsqlDB)
     else:
         ground_tag = get_gizmo_ground_tag(influxDB=influxDB)
+        LAr_tag = "bad"
         electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], last_value=True)
         electric_fields = calculate_electric_fields(influxDB=influxDB)
 
-        data = {
+        data =\
+        {
         "Gizmo grounding": ground_tag,
+        "Liquid Argon level": LAr_tag,
         "Purity monitor": {
             "last timestamp": electron_lifetime[0].isoformat(),
-            "electron lifetime (ms)": electron_lifetime[1]
+            "electron lifetime (s)": electron_lifetime[1]
             },
         "Electric fields (V/m)": {
             "Module 0": electric_fields[0],

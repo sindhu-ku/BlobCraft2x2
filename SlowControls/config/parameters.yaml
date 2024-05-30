@@ -14,9 +14,12 @@ influxdb:
        VME_crate23: *crate_dict
        ADC_crate: *crate_dict
        pt100: [['temp'],[['value']]]
-  ground_impedance: 242
-  ground_impedance_err: 10
+  ground_impedance: 242 #ohms
+  ground_impedance_err: 10 #ohms
   subsample_time: "60S"
+  gizmo_subsample_time: "60S"
+  drift_dist: 0.3 #meters
+  pick_off_resistance: 10.0e+6 #000000.0 #ohms
 
 psql:
   cryopress_table_prefix: "sqlt_data_1"
