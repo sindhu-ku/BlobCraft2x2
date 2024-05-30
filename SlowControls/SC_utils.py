@@ -48,21 +48,20 @@ def get_gizmo_ground_tag(influxDB):
 
     variables = influxDB.fetch_measurement_fields(database, measurement)
     result_data = influxDB.fetch_measurement_data(database, measurement, variables)
-    subsampled_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=config_influx["subsample_time"])
+    subsampled_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=None)
 
     tag = "good"
     bad_ground_values = []
-    for entry in subsampled_data:
-        if "resistance" in entry:
-            if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err:
-                tag = "bad"
-                bad_ground_values.append(entry)
-        else:
-            print("ERROR: No resistance field in data. This function can only be used to calculate good or bad grounding with gizmo")
-            return
-    if bad_ground_values: print(f"WARNING: Bad grounding detected at these times {bad_ground_values}")
 
-    return tag
+    for entry in subsampled_data:
+        if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err:
+            bad_ground_values.append(entry)
+
+    bag_ground_percent = len(bad_ground_values)*100./len(subsampled_data)
+    if bad_ground_values: print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({bag_ground_percent}%) instances at these times: {bad_ground_values}")
+    if bag_ground_percent >= config_influx["bad_ground_percent_threshold"]: tag = "bad"
+
+    return tag, len(bad_ground_values)
 
 def calculate_effective_shell_resistances(influxDB, V_set=0.0):
     database="HVmonitoring"
@@ -73,31 +72,40 @@ def calculate_effective_shell_resistances(influxDB, V_set=0.0):
     formatted_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=None)
 
     effective_shell_resistances = np.zeros(4)
+    pick_off_voltages = np.zeros(4)
     R_pick=config_influx["pick_off_resistance"]
     for i, var in enumerate(variables):
         V_pick = get_mean_measurement(formatted_data, var)
+        if V_pick == 0.0:
+            print(f"WARNING: The pick-off voltage for {var} is 0.0!")
+            continue
+        pick_off_voltages[i] = V_pick
         R_eff = R_pick*((V_set/V_pick) -1)
         effective_shell_resistances[i] = R_eff
 
-    return effective_shell_resistances
+    return pick_off_voltages, effective_shell_resistances
 
 def calculate_electric_fields(influxDB):
     database="HVmonitoring"
     measurement="SPELLMAN_HV"
     variables = ["Voltage"]
     electric_fields =  np.zeros(4)
+    pick_off_voltages = np.zeros(4)
+    mean_voltage = 0.0
+
     result_data = influxDB.fetch_measurement_data(database, measurement, variables)
     formatted_data = influxDB.get_subsampled_formatted_data(database, measurement, variables, result_data, subsample=None)
 
     if not formatted_data:
-        return electric_fields
+        return mean_voltage, pick_off_voltages, electric_fields
 
     mean_voltage = get_mean_measurement(formatted_data, variables[0])
+
     if mean_voltage == 0.0:
         print("WARNING: The set voltage from Spellman HV is 0.0!")
-        return electric_fields
+        return mean_voltage, pick_off_voltages, electric_fields
 
-    eff_resistance= calculate_effective_shell_resistances(influxDB=influxDB, V_set=mean_voltage)
+    pick_off_voltages, effective_shell_resistances= calculate_effective_shell_resistances(influxDB=influxDB, V_set=mean_voltage)
     R_pick=config_influx["pick_off_resistance"]
     drift_dist=config_influx["drift_dist"]
 
@@ -105,7 +113,7 @@ def calculate_electric_fields(influxDB):
         E = mean_voltage*(1-(R_pick/(R_pick+R_eff)))/drift_dist
         electric_fields[i] = E
 
-    return electric_fields
+    return mean_voltage, pick_off_voltages, electric_fields
 
 def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=False):
 
@@ -115,20 +123,30 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
         influx_blind_dump(influxDB=influxDB)
         psql_blind_dump(PsqlDB=PsqlDB)
     else:
-        ground_tag = get_gizmo_ground_tag(influxDB=influxDB)
+        ground_tag, bad_grounds = get_gizmo_ground_tag(influxDB=influxDB)
         LAr_tag = "bad"
         electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], last_value=True)
-        electric_fields = calculate_electric_fields(influxDB=influxDB)
+        set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields(influxDB=influxDB)
 
         data =\
         {
-        "Gizmo grounding": ground_tag,
+        "Gizmo grounding": {
+            "Overall grounding": ground_tag,
+            "Number of shorts": bad_grounds
+            },
         "Liquid Argon level": LAr_tag,
         "Purity monitor": {
-            "last timestamp": electron_lifetime[0].isoformat(),
-            "electron lifetime (s)": electron_lifetime[1]
+            "Last timestamp": electron_lifetime[0].isoformat(),
+            "Electron lifetime (s)": electron_lifetime[1]
             },
-        "Electric fields (V/m)": {
+        "Mean Spellman set voltage (kV)": set_voltage,
+        "Pick-off voltages (kV)": {
+            "Module 0": pick_off_voltages[0],
+            "Module 1": pick_off_voltages[1],
+            "Module 2": pick_off_voltages[2],
+            "Module 3": pick_off_voltages[3],
+            },
+        "Electric fields (kV/m)": {
             "Module 0": electric_fields[0],
             "Module 1": electric_fields[1],
             "Module 2": electric_fields[2],

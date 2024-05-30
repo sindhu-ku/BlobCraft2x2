@@ -16,10 +16,10 @@ influxdb:
        pt100: [['temp'],[['value']]]
   ground_impedance: 242 #ohms
   ground_impedance_err: 10 #ohms
+  bad_ground_percent_threshold: 1 #in %. Eg. if >=1% of values are bad, the ground tag is set to bad
   subsample_time: "60S"
-  gizmo_subsample_time: "60S"
   drift_dist: 0.3 #meters
-  pick_off_resistance: 10.0e+6 #000000.0 #ohms
+  pick_off_resistance: 10.0 #Mohms
 
 psql:
   cryopress_table_prefix: "sqlt_data_1"
