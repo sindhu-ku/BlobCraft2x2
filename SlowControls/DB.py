@@ -1,13 +1,11 @@
-import json
 import datetime
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
-import pandas as pd
+
 
 class PsqlDBManager:
 
     def __init__(self, config, run_start, run_end):
-
         self.config = config
         self.run_start = run_start
         self.run_end = run_end
@@ -20,11 +18,11 @@ class PsqlDBManager:
         return url_template.format(**self.config)
 
     def get_years_months(self):
-        year_st = '{:04d}'.format(self.run_start.year)
-        month_st = '{:02d}'.format(self.run_start.month)
+        year_st = "{:04d}".format(self.run_start.year)
+        month_st = "{:02d}".format(self.run_start.month)
 
-        year_end = '{:04d}'.format(self.run_end.year)
-        month_end = '{:02d}'.format(self.run_end.month)
+        year_end = "{:04d}".format(self.run_end.year)
+        month_end = "{:02d}".format(self.run_end.month)
 
         years = [year_st]
         months = [month_st]
@@ -38,7 +36,8 @@ class PsqlDBManager:
 
     def get_cryostat_data(self, table_prefix, tagid):
         print("\n")
-        print("**********************************************Querying Cryostat data from PostgreSQL Database**********************************************")
+        if tagid=="34": print("**********************************************Querying Cryostat pressure data from PostgreSQL Database**********************************************")
+        if tagid=="37": print("**********************************************Querying LAr level data from PostgreSQL Database**********************************************")
         result_data = []
         years, months = self.get_years_months()
         run_start_utime = datetime.datetime.timestamp(self.run_start) * 1e3
@@ -69,29 +68,8 @@ class PsqlDBManager:
         else:
             return result_data
 
-    def get_subsampled_formatted_data(self, data, variable, subsample=None):
-        if not data:
-            print(f"WARNING: No data found for {variable} for the given time period")
-            return
-
-        df = pd.DataFrame(data, columns=['time', variable])
-        df['time'] = pd.to_datetime(df['time'], unit='ms')
-        if subsample is not None:
-            df_resampled = df.set_index('time').resample(subsample).mean().dropna().reset_index()
-            result_data = df_resampled.values.tolist()
-        else:
-            result_data = df.values.tolist()
-
-        formatted_data = [{variable: entry[1], 'time': pd.to_datetime(entry[0], unit='ms', utc=True).isoformat()} for entry in result_data]
-        return formatted_data
-
-    def dump_to_json(self, formatted_data, variable):
-
-        json_filename = f'{variable}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
-        with open(json_filename, 'w') as json_file:
-            json.dump(formatted_data, json_file, indent=4)
-
-        print(f"Dumping {variable} data to {json_filename}")
+    def make_filename(self, variable):
+        return f"{variable}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json"
 
 
 
@@ -100,11 +78,11 @@ class InfluxDBManager:
         self.config = config
         self.run_start = run_start
         self.run_end = run_end
-        self.client = InfluxDBClient(host=self.config['host'], port=self.config['port'])
+        self.client = InfluxDBClient(host=self.config["host"], port=self.config["port"])
 
     def fetch_measurement_fields(self, database, measurement):
         result = self.client.query(f'SHOW FIELD KEYS ON "{database}" FROM "{measurement}"')
-        fields = [field['fieldKey'] for field in result.get_points()]
+        fields = [field["fieldKey"] for field in result.get_points()]
         return fields
 
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
@@ -126,42 +104,8 @@ class InfluxDBManager:
 
     def fetch_tag_keys(self, database, measurement):
         tag_keys_result = self.client.query(f'SHOW TAG KEYS ON "{database}" FROM "{measurement}"')
-        tag_keys = [tag['tagKey'] for tag in tag_keys_result.get_points()]
+        tag_keys = [tag["tagKey"] for tag in tag_keys_result.get_points()]
         return tag_keys
 
-    def get_subsampled_formatted_data(self, database, measurement, variables, result_data, subsample=None):
-
-        if not result_data:
-            print(f"WARNING: No data found for {variables} in {measurement} from {database}")
-            return
-
-        formatted_data = []
-        for key, data_points in result_data.items():
-            measurement_name, tags_dict = key
-            df = pd.DataFrame(data_points)
-            df['time'] = pd.to_datetime(df['time'])
-
-            if subsample is not None:
-                df_resampled = df.resample(subsample, on='time').mean().dropna()
-                resampled_entries = df_resampled.reset_index().to_dict('records')
-            else:
-                resampled_entries = df.to_dict('records')
-
-            for entry in resampled_entries:
-                formatted_entry = {
-                'time': entry['time'].isoformat(),
-                **{var: entry[var] for var in variables}
-                }
-                if tags_dict:
-                    formatted_entry['tags'] = tags_dict
-
-                formatted_data.append(formatted_entry)
-        return formatted_data
-
-    def dump_to_json(self, data, database, measurement):
-        json_filename = f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
-
-        with open(json_filename, 'w') as json_file:
-            json.dump(data, json_file, indent=4)
-
-        print(f"Dumping data to {json_filename}")
+    def make_filename(self, database, measurement):
+        return f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
