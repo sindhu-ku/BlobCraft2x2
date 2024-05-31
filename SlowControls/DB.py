@@ -4,7 +4,6 @@ from influxdb import InfluxDBClient
 
 
 class PsqlDBManager:
-
     def __init__(self, config, run_start, run_end):
         self.config = config
         self.run_start = run_start

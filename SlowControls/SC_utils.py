@@ -48,32 +48,30 @@ def get_gizmo_ground_tag(influxDB):
     ground_impedance_err=config_influx["ground_impedance_err"]
 
     variables = influxDB.fetch_measurement_fields(database, measurement)
-    result_data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables))
-    formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=None)
+    data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=None)
 
     tag = "good"
     bad_ground_values = []
 
-    for entry in formatted_data:
+    for entry in data:
         if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err: bad_ground_values.append(entry)
 
-    bag_ground_percent = len(bad_ground_values)*100./len(formatted_data)
+    bag_ground_percent = len(bad_ground_values)*100./len(data)
     if bad_ground_values: print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({round(bag_ground_percent,2)}%) instances at these times: {bad_ground_values}")
     if bag_ground_percent >= config_influx["bad_ground_percent_threshold"]: tag = "bad"
 
     return tag, len(bad_ground_values)
 
 def get_LAr_level_tag(PsqlDB):
-    LAr_level = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["LAr_level_tagid"]))
-    formatted_data = LAr_level.format(source="psql", variables=["LAr_level"], subsample_interval=None)
+    data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["LAr_level_tagid"])).format(source="psql", variables=["LAr_level"], subsample_interval=None)
     bad_level_values = []
     tag = "good"
-    for entry in formatted_data:
+    for entry in data:
         if entry["LAr_level"] < config_psql["good_LAr_level"]:
             bad_level_values.append(entry)
             if(tag != "bad"): tag="bad"
     if bad_level_values:
-        print(f"WARNING: Bad LAr level detected at {len(bad_level_values)}({round(len(bad_level_values)*100./len(formatted_data), 2)}%) instances at these times: {bad_level_values}")
+        print(f"WARNING: Bad LAr level detected at {len(bad_level_values)}({round(len(bad_level_values)*100./len(data), 2)}%) instances at these times: {bad_level_values}")
 
     return tag
 
@@ -82,14 +80,13 @@ def calculate_effective_shell_resistances(influxDB, V_set=0.0):
     measurement="Raspi"
     variables = ["CH0", "CH1", "CH2", "CH3"]
 
-    result_data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables))
-    formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=None)
+    data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=None)
 
     effective_shell_resistances = np.zeros(4)
     pick_off_voltages = np.zeros(4)
     R_pick=config_influx["pick_off_resistance"]
     for i, var in enumerate(variables):
-        V_pick = get_mean(formatted_data, var)
+        V_pick = get_mean(data, var)
         if V_pick == 0.0:
             print(f"WARNING: The pick-off voltage for {var} is 0.0!")
             continue
@@ -107,13 +104,12 @@ def calculate_electric_fields(influxDB):
     pick_off_voltages = np.zeros(4)
     mean_voltage = 0.0
 
-    result_data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables))
-    formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=None)
+    data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=None)
 
-    if not formatted_data:
+    if not data:
         return mean_voltage, pick_off_voltages, electric_fields
 
-    mean_voltage = get_mean(formatted_data, variables[0])
+    mean_voltage = get_mean(data, variables[0])
 
     if mean_voltage == 0.0:
         print("WARNING: The set voltage from Spellman HV is 0.0!")
