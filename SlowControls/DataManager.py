@@ -1,5 +1,9 @@
 import pandas as pd
 import json
+import pytz
+
+chicago_tz = pytz.timezone("America/Chicago")
+
 
 def dump(data, filename):
     if not data:
@@ -30,12 +34,12 @@ class DataManager:
             df["time"] = pd.to_datetime(df["time"], unit="ms")
             self.process_dataframe(df, variables, subsample_interval)
         else:
-            raise ValueError("Unsupported data format. Can only handle datatypes from influxsb and psql databases")
+            raise ValueError("Unsupported source format. Can only handle datatypes from influxsb and psql databases")
 
         return self.formatted_data
 
     def process_dataframe(self, df, variables, subsample_interval, tags_dict=None):
-        df["time"] = pd.to_datetime(df["time"])
+        df["time"] = pd.to_datetime(df["time"], utc=True).dt.tz_convert(chicago_tz)
         if subsample_interval is not None:
             formatted_entries = self.subsample(df, subsample_interval=subsample_interval)
         else:
