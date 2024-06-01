@@ -110,4 +110,4 @@ class InfluxDBManager:
         return tag_keys
 
     def make_filename(self, database, measurement):
-        return f'{database}_{measurement}_{run_start.isoformat()}_{run_end.isoformat()}.json'
+        return f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'

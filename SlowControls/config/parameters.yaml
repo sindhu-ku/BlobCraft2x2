@@ -18,11 +18,13 @@ influxdb:
     ADC_crate: *crate_dict
     pt100: [["temp"],[["value"]]] #RTD temp inside modules
 
- #special dict for runs database
+ #special dict for user readability
   influx_SC_special_dict:
-    ground_impedance: ['gizmo', 'resistance', ['resistance']]
-    pick_off_voltages: ['HVmonitoring', 'Raspi', ['CH0', 'CH1', 'CH2', 'CH3']]
-    set_voltage: ['HVmonitoring', 'SPELLMAN_HV', ['Voltage']]
+    ground_impedance: ["gizmo", "resistance", ["resistance"]]
+    pick_off_voltages: ["HVmonitoring", "Raspi", ["CH0", "CH1", "CH2", "CH3"]]
+    set_voltage: ["HVmonitoring", "SPELLMAN_HV", ["Voltage"]]
+    oil_temperature: ["HVmonitoring", "Raspi", ["Temperature"]]
+    RTD_temperature: ["pt100", "temp", ["value"]]
 
   ground_impedance: 242 #ohms
   ground_impedance_err: 10 #ohms
@@ -41,4 +43,11 @@ psql:
   purity_mon_variables:
     electron_lifetime: "prm_lifetime"
     impurities: "prm_impurities"
+    anode_peak: "prm_anodepeak"
+    cathode_peak: "prm_cathodepeak"
+    anode_time: "prm_anodetime"
+    cathode_time: "prm_cathodetime"
+    anode_hv: "prm_anode_hv"
+    cathode_hv: "prm_cathode_hv"
+    anodegrid_hv: "prm_anodegrid_hv"
   subsample_time: "60S"
