@@ -42,3 +42,9 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T2
     - anode_hv
     - cathode_hv
     - anodegrid_hv
+      
+### Adding custom measurements in config/parameters.yaml
+
+- For influxDB measurements, add to `influx_SC_special_dict`. For example, `ground_impedance: ["gizmo", "resistance", ["resistance"]]`, here `ground_impdance` is the user-defined measurement name. Everything else is Slow Controls database-specific. `gizmo` is the database name, `resistance` is the measurement name, `resistance` is one of the variable names. You can also get multiple variables in the same measurement. Example, additionally `phase` in this case: `ground_impedance_phase: ["gizmo", "resistance", ["resistance", "phase"]]`
+- For cryostat data, first obtain the tagid. Then edit `cryostat_tag_dict`. In this example, `cryostat_pressure: "34"`, the former is user-defined and the latter is the cryostat database-specific tagid
+- All the purity monitor variables are already available in the config
