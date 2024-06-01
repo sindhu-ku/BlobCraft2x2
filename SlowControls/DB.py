@@ -1,7 +1,6 @@
 import datetime
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
-import pytz
 
 class PsqlDBManager:
     def __init__(self, config, run_start, run_end):
@@ -68,7 +67,7 @@ class PsqlDBManager:
                 return result_data[-1]
             else:
                 print(f"WARNING: No data found for the given time period")
-                return self.run_start.tz_convert(chicago_tz).isoformat(), {var: 0.0 for var in variables}
+                return self.run_start, {var: 0.0 for var in variables}
         else:
             return result_data
 

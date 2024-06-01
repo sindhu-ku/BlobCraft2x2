@@ -31,8 +31,11 @@ def influx_blind_dump(influxDB):
             dump(result_data.format(source="influx", variables=measurement_variables, subsample_interval=config_influx["subsample_time"]), filename=influxDB.make_filename(database, measurement))
 
 def psql_blind_dump(PsqlDB):
-    purity_monitor = DataManager(PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=config_psql["purity_mon_variables"]))
-    dump(purity_monitor.format(source="psql", variables=config_psql["purity_mon_variables"], subsample_interval=config_psql["subsample_time"]), filename= PsqlDB.make_filename("purity_monitor"))
+    purity_mon_dict = config_psql.get("purity_mon_variables", {})
+    varnames = list(purity_mon_dict.keys())
+    variables = list(purity_mon_dict.values())
+    purity_monitor = DataManager(PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=variables))
+    dump(purity_monitor.format(source="psql", variables=varnames, subsample_interval=config_psql["subsample_time"]), filename= PsqlDB.make_filename("purity_monitor"))
 
     cryostat_dict = config_psql.get("cryostat_tag_dict", {})
     for varname, tagid in cryostat_dict.items():

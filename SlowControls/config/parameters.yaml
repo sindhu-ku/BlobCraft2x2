@@ -38,5 +38,7 @@ psql:
     LAr_level: "37"
   good_LAr_level: 500.0 #mm
   purity_mon_table: "prm_table"
-  purity_mon_variables: ["prm_lifetime", "prm_impurities"]
+  purity_mon_variables:
+    electron_lifetime: "prm_lifetime"
+    impurities: "prm_impurities"
   subsample_time: "60S"
