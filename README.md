@@ -33,12 +33,12 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T2
     - LAr_level
 
   - Purity monitor measurements:
-    - electron_lifetime: "prm_lifetime"
-    - impurities: "prm_impurities"
-    - anode_peak: "prm_anodepeak"
-    - cathode_peak: "prm_cathodepeak"
-    - anode_time: "prm_anodetime"
-    - cathode_time: "prm_cathodetime"
-    - anode_hv: "prm_anode_hv"
-    - cathode_hv: "prm_cathode_hv"
-    - anodegrid_hv: "prm_anodegrid_hv"
+    - electron_lifetime
+    - impurities
+    - anode_peak
+    - cathode_peak
+    - anode_time
+    - cathode_time
+    - anode_hv
+    - cathode_hv
+    - anodegrid_hv
