@@ -3,17 +3,27 @@ influxdb:
     [["PACMAN&FANS", "VGAs", "RTDs"], [["voltage", "current", "channel_temperature"]]]
   crate_dict: &crate_dict
     [["temperature", "electrical_params"], [["temperature"],[ "voltage_sense", "voltage_terminal", "current"]]]
+
+  #use this dict to look for db names,  measurement names, or variable names. Format db: [measurment1, measurement2, ...], [[variables for measurement1], [variables for measurement2]..]
+  #If the variables list is empty, it will automatically fetch all the variables in the measurement
   influx_SC_data_dict:
-       gizmo: [["resistance"], []]
-       module0_mpod0: *mpod_dict
-       module1_mpod0: *mpod_dict
-       module2_mpod1: *mpod_dict
-       module3_mpod1: *mpod_dict
-       HVmonitoring: [["SPELLMAN_HV", "Raspi"], [["Voltage", "Current"], ["Temperature"]]]
-       VME_crate01: *crate_dict
-       VME_crate23: *crate_dict
-       ADC_crate: *crate_dict
-       pt100: [["temp"],[["value"]]]
+    gizmo: [["resistance"], []]
+    module0_mpod0: *mpod_dict
+    module1_mpod0: *mpod_dict
+    module2_mpod1: *mpod_dict
+    module3_mpod1: *mpod_dict
+    HVmonitoring: [["SPELLMAN_HV", "Raspi"], [["Voltage", "Current"], ["CH0", "CH1", "CH2", "CH3", "Temperature"]]]
+    VME_crate01: *crate_dict
+    VME_crate23: *crate_dict
+    ADC_crate: *crate_dict
+    pt100: [["temp"],[["value"]]] #RTD temp inside modules
+
+ #special dict for runs database
+  influx_SC_special_dict:
+    ground_impedance: ['gizmo', 'resistance', ['resistance']]
+    pick_off_voltages: ['HVmonitoring', 'Raspi', ['CH0', 'CH1', 'CH2', 'CH3']]
+    set_voltage: ['HVmonitoring', 'SPELLMAN_HV', ['Voltage']]
+
   ground_impedance: 242 #ohms
   ground_impedance_err: 10 #ohms
   bad_ground_percent_threshold: 1 #in %. Eg. if >=1% of values are bad, the ground tag is set to bad
@@ -23,8 +33,10 @@ influxdb:
 
 psql:
   cryo_table_prefix: "sqlt_data_1"
-  cryopress_tagid: "34"
-  LAr_level_tagid: "37"
-  good_LAr_level: 500 #mm
+  cryostat_tag_dict:
+    cryostat_pressure: "34"
+    LAr_level: "37"
+  good_LAr_level: 500.0 #mm
   purity_mon_table: "prm_table"
+  purity_mon_variables: ["prm_lifetime", "prm_impurities"]
   subsample_time: "60S"

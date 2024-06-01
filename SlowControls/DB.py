@@ -1,7 +1,7 @@
 import datetime
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
-
+import pytz
 
 class PsqlDBManager:
     def __init__(self, config, run_start, run_end):
@@ -33,14 +33,14 @@ class PsqlDBManager:
 
         return years, months
 
-    def get_cryostat_data(self, table_prefix, tagid):
+    def get_cryostat_data(self, table_prefix, variable, tagid):
         print("\n")
-        if tagid=="34": print("**********************************************Querying Cryostat pressure data from PostgreSQL Database**********************************************")
-        if tagid=="37": print("**********************************************Querying LAr level data from PostgreSQL Database**********************************************")
+        print(f"**********************************************Querying {variable} data from PostgreSQL Database**********************************************")
+
         result_data = []
         years, months = self.get_years_months()
-        run_start_utime = datetime.datetime.timestamp(self.run_start) * 1e3
-        run_end_utime = datetime.datetime.timestamp(self.run_end) * 1e3
+        run_start_utime = int(self.run_start.timestamp() * 1e3)
+        run_end_utime = int(self.run_end.timestamp() * 1e3)
         for y in years:
             for m in months:
                 table_name = f"{table_prefix}_{y}_{m}"
@@ -50,25 +50,30 @@ class PsqlDBManager:
                 result_data.extend(result.all())
         return result_data
 
-    def get_purity_monitor_data(self, tablename, last_value=False):
+    def get_purity_monitor_data(self, tablename, variables=[], last_value=False):
         print("\n")
-        print("**********************************************Querying Purity monitor electron lifetime from PostgreSQL Database**********************************************")
-        result_data= []
-        tab = dbq.table(tablename, dbq.Column("timestamp"), dbq.Column("prm_lifetime"))
-        query = dbq.select(tab.c.timestamp, tab.c.prm_lifetime).select_from(tab).where(dbq.and_(tab.c.timestamp >= self.run_start, tab.c.timestamp <= self.run_end))
+        print(f"**********************************************Querying {variables} from purity monitor measurements from PostgreSQL Database**********************************************")
+
+        result_data = []
+        columns = [dbq.Column("timestamp")] + [dbq.Column(var) for var in variables]
+        tab = dbq.table(tablename, *columns)
+
+        query_columns = [tab.c.timestamp] + [tab.c[var] for var in variables]
+        query = dbq.select(*query_columns).select_from(tab).where(dbq.and_(tab.c.timestamp >= self.run_start, tab.c.timestamp <= self.run_end))
+
         result = self.connection.execute(query)
         result_data.extend(result.all())
         if last_value:
             if result_data:
-                return result_data[len(result_data)-1]
+                return result_data[-1]
             else:
                 print(f"WARNING: No data found for the given time period")
-                return(self.run_start, 0.0)
+                return self.run_start.tz_convert(chicago_tz).isoformat(), {var: 0.0 for var in variables}
         else:
             return result_data
 
-    def make_filename(self, variable):
-        return f"{variable}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json"
+    def make_filename(self, measurement_name):
+        return f"{measurement_name}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json"
 
 
 
@@ -87,17 +92,16 @@ class InfluxDBManager:
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
         print("\n")
         print(f"**********************************************Querying {variables} in {measurement} from {database} from InfluxDB Database**********************************************")
-        start_time_ms = int(self.run_start.timestamp() * 1e3)
-        end_time_ms = int(self.run_end.timestamp() * 1e3)
-
+        run_start_utime = int(self.run_start.timestamp() * 1e3)
+        run_end_utime = int(self.run_end.timestamp() * 1e3)
         query = ''
         variable_str = ', '.join(variables)
 
         tag_keys = self.fetch_tag_keys(database, measurement)
         tag_keys_str = ', '.join(tag_keys)
 
-        if tag_keys: query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms GROUP BY {tag_keys_str}'
-        else:  query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {start_time_ms}ms and time <= {end_time_ms}ms'
+        if tag_keys: query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {run_start_utime}ms and time <= {run_end_utime}ms GROUP BY {tag_keys_str}'
+        else:  query = f'SELECT {variable_str} FROM "{measurement}" WHERE time >= {run_start_utime}ms and time <= {run_end_utime}ms'
         result = self.client.query(query, database=database)
         return result
 
@@ -107,4 +111,4 @@ class InfluxDBManager:
         return tag_keys
 
     def make_filename(self, database, measurement):
-        return f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
+        return f'{database}_{measurement}_{run_start.isoformat()}_{run_end.isoformat()}.json'

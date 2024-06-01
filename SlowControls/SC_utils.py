@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from DataManager import *
 
+chicago_tz = pytz.timezone('America/Chicago')
+
 config_influx = {}
 config_psql = {}
 
@@ -29,25 +31,25 @@ def influx_blind_dump(influxDB):
             dump(result_data.format(source="influx", variables=measurement_variables, subsample_interval=config_influx["subsample_time"]), filename=influxDB.make_filename(database, measurement))
 
 def psql_blind_dump(PsqlDB):
-    subsample = config_psql["subsample_time"]
+    purity_monitor = DataManager(PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=config_psql["purity_mon_variables"]))
+    dump(purity_monitor.format(source="psql", variables=config_psql["purity_mon_variables"], subsample_interval=config_psql["subsample_time"]), filename= PsqlDB.make_filename("purity_monitor"))
 
-    electron_lifetime = DataManager(PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"]))
-    cryostat_pressure = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["cryopress_tagid"]))
-    LAr_level = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["LAr_level_tagid"]))
-    measurements = {
-        "electron_lifetime": electron_lifetime,
-        "cryostat_pressure": cryostat_pressure,
-        "LAr_level": LAr_level
-    }
-    for varname, meas in measurements.items(): dump(meas.format(source="psql", variables=[varname], subsample_interval=config_psql["subsample_time"]), filename= PsqlDB.make_filename(varname))
+    cryostat_dict = config_psql.get("cryostat_tag_dict", {})
+    for varname, tagid in cryostat_dict.items():
+        data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], variable=varname, tagid=tagid))
+        dump(data.format(source="psql", variables=[varname], subsample_interval=config_psql["subsample_time"]), filename= PsqlDB.make_filename(varname))
+
+def get_influx_db_meas_vars(meas_name):
+    database, measurement, variables = config_influx.get("influx_SC_special_dict", {}).get(meas_name, [None, None, None])
+    if not database and measurement and variables:
+        raise ValueError(f"The given measurement name {meas_name} is not in the dict. Check influx_SC_special_dict in config/parameters.yaml")
+    return database, measurement, variables
 
 def get_gizmo_ground_tag(influxDB):
-    database="gizmo"
-    measurement="resistance"
+    database, measurement, variables = get_influx_db_meas_vars("ground_impedance")
     ground_impedance=config_influx["ground_impedance"]
     ground_impedance_err=config_influx["ground_impedance_err"]
 
-    variables = influxDB.fetch_measurement_fields(database, measurement)
     data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=None)
 
     tag = "good"
@@ -63,27 +65,31 @@ def get_gizmo_ground_tag(influxDB):
     return tag, len(bad_ground_values)
 
 def get_LAr_level_tag(PsqlDB):
-    data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], tagid=config_psql["LAr_level_tagid"])).format(source="psql", variables=["LAr_level"], subsample_interval=None)
+    data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], variable="LAr_level", tagid=config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=None)
+    good_LAr_level = config_psql["good_LAr_level"]
     bad_level_values = []
     tag = "good"
+
     for entry in data:
-        if entry["LAr_level"] < config_psql["good_LAr_level"]:
+        if entry["LAr_level"] < good_LAr_level or entry["LAr_level"] > good_LAr_level:
             bad_level_values.append(entry)
             if(tag != "bad"): tag="bad"
+
     if bad_level_values:
         print(f"WARNING: Bad LAr level detected at {len(bad_level_values)}({round(len(bad_level_values)*100./len(data), 2)}%) instances at these times: {bad_level_values}")
 
     return tag
 
 def calculate_effective_shell_resistances(influxDB, V_set=0.0):
-    database="HVmonitoring"
-    measurement="Raspi"
-    variables = ["CH0", "CH1", "CH2", "CH3"]
+    database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
+    effective_shell_resistances = np.zeros(4)
+    pick_off_voltages = np.zeros(4)
 
     data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=None)
 
-    effective_shell_resistances = np.zeros(4)
-    pick_off_voltages = np.zeros(4)
+    if not data:
+        return  pick_off_voltages, effective_shell_resistances
+
     R_pick=config_influx["pick_off_resistance"]
     for i, var in enumerate(variables):
         V_pick = get_mean(data, var)
@@ -97,9 +103,7 @@ def calculate_effective_shell_resistances(influxDB, V_set=0.0):
     return pick_off_voltages, effective_shell_resistances
 
 def calculate_electric_fields(influxDB):
-    database="HVmonitoring"
-    measurement="SPELLMAN_HV"
-    variables = ["Voltage"]
+    database, measurement, variables = get_influx_db_meas_vars("set_voltage")
     electric_fields =  np.zeros(4)
     pick_off_voltages = np.zeros(4)
     mean_voltage = 0.0
@@ -135,7 +139,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
     else:
         ground_tag, shorts_num = get_gizmo_ground_tag(influxDB=influxDB)
         LAr_tag = get_LAr_level_tag(PsqlDB=PsqlDB)
-        electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], last_value=True)
+        electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields(influxDB=influxDB)
 
         data =\
@@ -146,7 +150,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
             },
         "Liquid Argon level": LAr_tag,
         "Purity monitor": {
-            "Last timestamp": electron_lifetime[0].isoformat(),
+            "Last timestamp": pd.to_datetime(electron_lifetime[0], utc=True).tz_convert(chicago_tz).isoformat(),
             "Electron lifetime (s)": electron_lifetime[1]
             },
         "Mean Spellman set voltage (kV)": set_voltage,
@@ -163,4 +167,5 @@ def dump_SC_data(influxDB, PsqlDB, config_file, json_filename="", dump_all_data=
             "Module 3": electric_fields[3],
             }
         }
+
         dump(data, filename=json_filename)
