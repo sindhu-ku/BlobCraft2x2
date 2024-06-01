@@ -28,11 +28,11 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T2
     - oil_temperature
     - RTD_temperature
     
-  - Cryo Psql DB (more variables can be added in config/parameters.yaml once you have the tagid for the measurement):
+  - Cryo PSQL DB (more variables can be added in config/parameters.yaml once you have the tagid for the measurement):
     - cryostat_pressure
     - LAr_level
 
-  - Purity monitor measurements:
+  - Purity monitor measurements PSQL DB:
     - electron_lifetime
     - impurities
     - anode_peak
