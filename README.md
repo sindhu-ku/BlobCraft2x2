@@ -4,7 +4,7 @@ Author: Sindhujha Kumaran (s.kumaran@uci.edu)
 
 Pre-requisites: Fermilab VPN, Tunnel into acd-daq05, ask me for config/credentials.yaml (make sure to change the tunnel port for influxdb credentials)
 
-Required packages: `yaml datetime pytz pandas numpy json argparse dateutil`
+Required packages: `sqlalchemy influxdb yaml datetime pytz pandas numpy json argparse dateutil`
 
 ```
 cd SlowControls/
