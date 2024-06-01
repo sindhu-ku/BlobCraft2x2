@@ -2,6 +2,8 @@ import datetime
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient
 
+chicago_tz = pytz.timezone('America/Chicago')
+
 class PsqlDBManager:
     def __init__(self, config, run_start, run_end):
         self.config = config
@@ -110,4 +112,4 @@ class InfluxDBManager:
         return tag_keys
 
     def make_filename(self, database, measurement):
-        return f'{database}_{measurement}_{self.run_start.isoformat()}_{self.run_end.isoformat()}.json'
+        return f'{database}_{measurement}_{self.run_start.tz_convert(chicago_tz).isoformat()}_{self.run_end.tz_convert(chicago_tz).isoformat()}.json'
