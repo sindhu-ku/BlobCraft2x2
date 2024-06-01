@@ -31,23 +31,23 @@ def parse_datetime(date_str, is_start):
 
 def main():
     parser = argparse.ArgumentParser(description="Query data from databases and save it as JSON.")
-    parser.add_argument('--run_start', type=str, nargs='?', help="Start time for the run (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
-    parser.add_argument('--run_end', type=str, nargs='?', help="End time for the run (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
+    parser.add_argument('--start', type=str, nargs='?', help="Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
+    parser.add_argument('--end', type=str, nargs='?', help="End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
     parser.add_argument('--measurement', type=str, nargs='?', help="Measurement name to query")
     parser.add_argument('--subsample', type=str, default=None, help="Subsample interval in s like '60S' (optional)")
 
     args = parser.parse_args()
 
-    if not args.run_start or not args.run_end or not args.measurement:
+    if not args.start or not args.end or not args.measurement:
         parser.print_help()
-        print("\nError: run_start, run_end, and measurement are required arguments.")
+        print("\nError: start, end, and measurement are required arguments.")
         return
 
     start = datetime.datetime.now()
 
     try:
-        run_start = parse_datetime(args.run_start, is_start=True)
-        run_end = parse_datetime(args.run_end, is_start=False)
+        run_start = parse_datetime(args.start, is_start=True)
+        run_end = parse_datetime(args.end, is_start=False)
     except ValueError as e:
         print(f"Error parsing date: {e}")
         return
