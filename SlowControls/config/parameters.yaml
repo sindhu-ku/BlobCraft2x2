@@ -26,20 +26,21 @@ influxdb:
     oil_temperature: ["HVmonitoring", "Raspi", ["Temperature"]]
     RTD_temperature: ["pt100", "temp", ["value"]]
 
+ #runsdb stuff
   ground_impedance: 242 #ohms
   ground_impedance_err: 10 #ohms
   bad_ground_percent_threshold: 1 #in %. Eg. if >=1% of values are bad, the ground tag is set to bad
-  subsample_time: "60S"
   drift_dist: 0.3 #meters
   pick_off_resistance: 10.0 #Mohms
 
 psql:
   cryo_table_prefix: "sqlt_data_1"
+  purity_mon_table: "prm_table"
+
   cryostat_tag_dict:
     cryostat_pressure: "34"
     LAr_level: "37"
-  good_LAr_level: 500.0 #mm
-  purity_mon_table: "prm_table"
+    
   purity_mon_variables:
     electron_lifetime: "prm_lifetime"
     impurities: "prm_impurities"
@@ -50,4 +51,5 @@ psql:
     anode_hv: "prm_anode_hv"
     cathode_hv: "prm_cathode_hv"
     anodegrid_hv: "prm_anodegrid_hv"
-  subsample_time: "60S"
+
+  good_LAr_level: 500.0 #mm #threshold above or below which LAr level is bad. For runsdb
