@@ -1,10 +1,10 @@
 import yaml
 import numpy as np
 import pandas as pd
-import pytz
+from zoneinfo import ZoneInfo
 from DataManager import *
 
-chicago_tz = pytz.timezone('America/Chicago')
+chicago_tz =  ZoneInfo("America/Chicago")
 
 config_influx = {}
 config_psql = {}
@@ -158,7 +158,7 @@ def dump_SC_data(influxDB, PsqlDB, config_file, subsample=None, json_filename=""
             },
         "Liquid Argon level": LAr_tag,
         "Purity monitor": {
-            "Last timestamp": pd.to_datetime(electron_lifetime[0], utc=True).tz_convert(chicago_tz).isoformat(),
+            "Last timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
             "Electron lifetime (s)": electron_lifetime[1]
             },
         "Mean Spellman set voltage (kV)": set_voltage,

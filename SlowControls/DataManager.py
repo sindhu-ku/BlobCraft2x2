@@ -1,8 +1,8 @@
 import pandas as pd
 import json
-import pytz
+from zoneinfo import ZoneInfo
 
-chicago_tz = pytz.timezone("America/Chicago")
+chicago_tz =  ZoneInfo("America/Chicago")
 
 
 def dump(data, filename):
