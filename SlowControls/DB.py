@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.9
+
 import datetime
 import sqlalchemy as dbq
 from influxdb import InfluxDBClient

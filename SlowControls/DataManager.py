@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.9
+
 import pandas as pd
 import json
 from zoneinfo import ZoneInfo
