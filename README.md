@@ -6,9 +6,14 @@ Pre-requisites: Fermilab VPN, Tunnel into acd-daq05, ask me for config/credentia
 
 Required packages: `sqlalchemy influxdb yaml datetime pytz pandas numpy json argparse dateutil`
 
+Installation:
 ```
-cd SlowControls/
-usage: python3 SC_query.py  --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level"
+cd DetectorControlsQuery/
+pip3 install .
+```
+Usage:
+```
+query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level"
 ```
 
 This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T23:59:59.999999.json`
