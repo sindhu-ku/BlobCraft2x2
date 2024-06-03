@@ -7,7 +7,7 @@ Pre-requisites: Fermilab VPN, Tunnel into acd-daq05, ask me for config/credentia
 Installation:
 ```
 git clone https://github.com/sindhu-ku/2x2_RunsDB.git
-cd DetectorControlsQuery/
+cd 2x2_RunsDB/DetectorControlsQuery/
 pip3 install .
 ```
 Usage:
