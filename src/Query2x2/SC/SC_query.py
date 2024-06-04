@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
 import yaml
-import datetime
+from datetime import datetime
 import argparse
 from dateutil import parser as date_parser
-from .DB import *
+from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
 
 def get_measurement_info(measurement, config_influx, config_psql):
@@ -25,18 +25,18 @@ def parse_datetime(date_str, is_start):
     dt = date_parser.parse(date_str)
     if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
         if is_start:
-            return datetime.datetime.combine(dt.date(), datetime.time.min)
+            return datetime.combine(dt.date(), datetime.time.min)
         else:
-            return datetime.datetime.combine(dt.date(), datetime.time.max)
+            return datetime.combine(dt.date(), datetime.time.max)
     return dt
 
-def blob_maker(start, end, measurement, subsample=None, run=None, subrun=None):
-    query_start = datetime.datetime.now()
+def SC_blob_maker(start, end, measurement, subsample=None, run=None, subrun=None):
+    query_start = datetime.now()
 
-    cred_config_file = "config/credentials.yaml"
-    param_config_file = "config/parameters.yaml"
+    cred_config_file = "config/SC_credentials.yaml"
+    param_config_file = "config/SC_parameters.yaml"
 
-    print(f"----------------------------------------Fetching data for the time period {start} to {end}----------------------------------------")
+    print(f"----------------------------------------Fetching Slow Controls data for the time period {start} to {end}----------------------------------------")
 
     with open(cred_config_file, "r") as yaml_file:
         cred_config = yaml.safe_load(yaml_file)
@@ -55,7 +55,9 @@ def blob_maker(start, end, measurement, subsample=None, run=None, subrun=None):
             raise ValueError("run is a required argument when measurement is runsdb.")
         if subrun: output_json_filename = f"SlowControls_run-{run}_subrun-{subrun}_{start.isoformat()}_{end.isoformat()}.json"
         else: output_json_filename = f"SlowControls_run-{run}_{start.isoformat()}_{end.isoformat()}.json"
-        dump_SC_data(influxDB=influxDB, PsqlDB=PsqlDB, config_file=param_config_file, json_filename=output_json_filename, subsample=subsample, dump_all_data=False)
+
+        data = dump_SC_data(influxDB=influxDB, PsqlDB=PsqlDB, config_file=param_config_file, json_filename=output_json_filename, subsample=subsample, dump_all_data=False)
+        dump(data, output_json_filename)
 
     elif measurement == "all":
         dump_SC_data(influxDB=influxDB, PsqlDB=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
@@ -78,7 +80,7 @@ def blob_maker(start, end, measurement, subsample=None, run=None, subrun=None):
     influxDB.close_connection()
     PsqlDB.close_connection()
 
-    query_end = datetime.datetime.now()
+    query_end = datetime.now()
     print("\n")
     print("----------------------------------------END OF QUERYING AND BLOB MAKING----------------------------------------")
     print("Total querying and blob making time in s: ", query_end - query_start)
@@ -101,7 +103,7 @@ def main():
         print(f"Error parsing date: {e}")
         return
 
-    blob_maker(start=start, end=end, measurement=args.measurement, subsample=args.subsample, run=args.run, subrun=args.subrun)
+    SC_blob_maker(start=start, end=end, measurement=args.measurement, subsample=args.subsample, run=args.run, subrun=args.subrun)
 
 if __name__ == "__main__":
     main()

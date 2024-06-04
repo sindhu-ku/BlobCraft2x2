@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 
-import datetime
-import sqlalchemy as dbq
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import sqlalchemy as alc
+import sqlite3
 from influxdb import InfluxDBClient
 
+chicago_tz =  ZoneInfo("America/Chicago")
 class PsqlDBManager:
     def __init__(self, config, start, end):
         self.config = config
         self.start = start
         self.end = end
         self.url = self.create_url()
-        self.engine = dbq.create_engine(self.url)
+        self.engine = alc.create_engine(self.url)
         self.connection = self.engine.connect()
 
     def create_url(self):
@@ -44,8 +47,8 @@ class PsqlDBManager:
         for y in years:
             for m in months:
                 table_name = f"{table_prefix}_{y}_{m}"
-                tab = dbq.table(table_name, dbq.Column("t_stamp"), dbq.Column("floatvalue"), dbq.Column("tagid"))
-                query = dbq.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(dbq.and_(tab.c.tagid == str(tagid), tab.c.t_stamp >= str(int(start_utime)), tab.c.t_stamp <= str(int(end_utime))))
+                tab = alc.table(table_name, alc.Column("t_stamp"), alc.Column("floatvalue"), alc.Column("tagid"))
+                query = alc.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(alc.and_(tab.c.tagid == str(tagid), tab.c.t_stamp >= str(int(start_utime)), tab.c.t_stamp <= str(int(end_utime))))
                 result = self.connection.execute(query)
                 result_data.extend(result.all())
         return result_data
@@ -54,11 +57,11 @@ class PsqlDBManager:
         print(f"\n**********************************************Querying {variables} from purity monitor measurements from PostgreSQL Database**********************************************")
 
         result_data = []
-        columns = [dbq.Column("timestamp")] + [dbq.Column(var) for var in variables]
-        tab = dbq.table(tablename, *columns)
+        columns = [alc.Column("timestamp")] + [alc.Column(var) for var in variables]
+        tab = alc.table(tablename, *columns)
 
         query_columns = [tab.c.timestamp] + [tab.c[var] for var in variables]
-        query = dbq.select(*query_columns).select_from(tab).where(dbq.and_(tab.c.timestamp >= self.start, tab.c.timestamp <= self.end))
+        query = alc.select(*query_columns).select_from(tab).where(alc.and_(tab.c.timestamp >= self.start, tab.c.timestamp <= self.end))
 
         result = self.connection.execute(query)
         result_data.extend(result.all())
@@ -117,3 +120,65 @@ class InfluxDBManager:
     def close_connection(self):
         if self.client is not None:
             self.client.close()
+
+class SQLiteManager:
+    def __init__(self, config, run):
+        self.config = config
+        self.run = run
+        self.filename = self.config.get('filename')
+        if not self.filename:
+            raise ValueError("Database filename not specified in the config file.")
+        self.conn = sqlite3.connect(self.filename)
+        self.cursor = self.conn.cursor()
+
+    def query_data(self, table_name, conditions, columns=None):
+        if columns:
+            columns_str = ", ".join(columns)
+        else:
+            columns_str = "*"
+        condition_str = " AND ".join(conditions)
+        query = f"SELECT {columns_str} FROM {table_name} WHERE {condition_str}"
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        return rows
+
+    def get_subruns(self):
+        subrun_columns = ['subrun', 'start_time_unix', 'end_time_unix']
+        subruns_data = self.query_data(table_name='lrs_runs_data', conditions=[f"morcs_run_nr=={self.run}"], columns=subrun_columns)
+
+        subruns = {}
+        for row in subruns_data:
+            subrun_info = dict(zip(subrun_columns, row))
+            subrun_number = subrun_info['subrun']
+            subrun_times = {
+                'start_time': datetime.fromtimestamp(subrun_info['start_time_unix'], chicago_tz),
+                'end_time': datetime.fromtimestamp(subrun_info['start_time_unix'], chicago_tz)
+            }
+            subruns[subrun_number] = subrun_times
+
+        return subruns
+
+    def get_moas_version_data(self, moas_filename):
+        moas_version = moas_filename[5:-4]
+        if not moas_version:
+            raise ValueError(f"MOAS file not found!")
+        moas_columns = self.config.get('moas_versions', [])
+        if not moas_columns:
+            raise ValueError("No columns specified for moas_versions in the config file.")
+        moas_data = self.query_data(table_name='moas_versions', conditions=[f"version=='{moas_version}'"], columns=moas_columns)
+        if not moas_data:
+            raise ValueError(f"ERROR: No data found for MOAS version extracted from filename: {moas_filename}")
+        if len(moas_data) > 1:
+            raise ValueError(f"Multiple MOAS versions found for version {moas_version}")
+        return [dict(zip(moas_columns, row)) for row in moas_data]
+
+    def get_moas_channels_data(self, config_id):
+        moas_channels_columns = self.config.get('moas_channels', [])
+        moas_channels_data = self.query_data(table_name='moas_channels', conditions=[f"config_id=={config_id}"], columns=moas_channels_columns)
+        if not moas_channels_data:
+            raise ValueError(f"ERROR: No MOAS channels data found")
+        return [dict(zip(moas_channels_columns, row)) for row in moas_channels_data]
+
+    def close_connection(self):
+        if self.conn:
+            self.conn.close()

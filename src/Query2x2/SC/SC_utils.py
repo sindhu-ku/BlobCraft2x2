@@ -4,7 +4,7 @@ import yaml
 import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
-from .DataManager import *
+from ..DataManager import *
 
 chicago_tz =  ZoneInfo("America/Chicago")
 
@@ -59,15 +59,18 @@ def get_gizmo_ground_tag(influxDB):
 
     data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample_interval)
 
-    tag = "good"
+    tag = "bad"
     bad_ground_values = []
+
+    if not data:
+        return tag, len(bad_ground_values)
 
     for entry in data:
         if entry["resistance"] < good_ground_impedance-ground_impedance_err or entry["resistance"] > good_ground_impedance+ground_impedance_err: bad_ground_values.append(entry)
 
     bag_ground_percent = len(bad_ground_values)*100./len(data)
     if bad_ground_values: print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({round(bag_ground_percent,2)}%) instances at these times: {bad_ground_values}")
-    if bag_ground_percent >= config_influx["bad_ground_percent_threshold"]: tag = "bad"
+    if bag_ground_percent < config_influx["bad_ground_percent_threshold"]: tag = "good"
 
     return tag, len(bad_ground_values)
 
@@ -76,15 +79,19 @@ def get_LAr_level_tag(PsqlDB):
     good_LAr_level = config_psql["good_LAr_level"]
     LAr_level_err = config_psql["LAr_level_err"]
     bad_level_values = []
-    tag = "good"
+    tag = "bad"
+
+    if not data:
+        return tag
 
     for entry in data:
         if entry["LAr_level"] < good_LAr_level-LAr_level_err or entry["LAr_level"] > good_LAr_level+LAr_level_err:
             bad_level_values.append(entry)
-            if(tag != "bad"): tag="bad"
 
     if bad_level_values:
         print(f"WARNING: Bad LAr level detected at {len(bad_level_values)}({round(len(bad_level_values)*100./len(data), 2)}%) instances at these times: {bad_level_values}")
+
+    else: tag = "good"
 
     return tag
 
@@ -179,7 +186,8 @@ def dump_SC_data(influxDB, PsqlDB, config_file, subsample=None, json_filename=""
             }
         }
 
-        dump(data, filename=json_filename)
+        return data
+
 
 def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None):
     dump(DataManager(influxDB.fetch_measurement_data(database=database, measurement=measurement, variables=variables)).format(source="influx", variables=variables, subsample_interval=subsample), filename=influxDB.make_filename(database, measurement))
