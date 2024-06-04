@@ -30,7 +30,7 @@ def parse_datetime(date_str, is_start):
             return datetime.datetime.combine(dt.date(), datetime.time.max)
     return dt
 
-def blob_maker(start, end, measurement, subsample=None, run_number=None):
+def blob_maker(start, end, measurement, subsample=None, run=None, subrun=None):
     query_start = datetime.datetime.now()
 
     cred_config_file = "config/credentials.yaml"
@@ -51,9 +51,10 @@ def blob_maker(start, end, measurement, subsample=None, run_number=None):
     config_psql = param_config["psql"]
 
     if measurement == "runsdb":
-        if not run_number:
-            raise ValueError("run_number is a required argument when measurement is runsdb.")
-        output_json_filename = f"SlowControls_run-{run_number}_{start.isoformat()}_{end.isoformat()}.json"
+        if not run:
+            raise ValueError("run is a required argument when measurement is runsdb.")
+        if subrun: output_json_filename = f"SlowControls_run-{run}_subrun-{subrun}_{start.isoformat()}_{end.isoformat()}.json"
+        else: output_json_filename = f"SlowControls_run-{run}_{start.isoformat()}_{end.isoformat()}.json"
         dump_SC_data(influxDB=influxDB, PsqlDB=PsqlDB, config_file=param_config_file, json_filename=output_json_filename, subsample=subsample, dump_all_data=False)
 
     elif measurement == "all":
@@ -85,7 +86,8 @@ def main():
     parser.add_argument('--end', type=str, required=True, help="End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
     parser.add_argument('--measurement', type=str, required=True, help="Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurments in the parameters/config.yaml (influx_SC_data_dict, cryostat_tag_dict, purity_mon_variables)")
     parser.add_argument('--subsample', type=str, default=None, help="Subsample interval in s like '60S' (optional)")
-    parser.add_argument('--run_number', type=str, default=None, help="Run number for runsdb (required when measurement is runsdb)")
+    parser.add_argument('--run', type=int, default=None, help="Run number for runsdb (required when measurement is runsdb)")
+    parser.add_argument('--subrun', type=int, default=None, help="Subrun number for runsdb (optional)")
 
     args = parser.parse_args()
 
@@ -96,7 +98,7 @@ def main():
         print(f"Error parsing date: {e}")
         return
 
-    blob_maker(start=start, end=end, measurement=args.measurement, subsample=args.subsample, run_number=args.run_number)
+    blob_maker(start=start, end=end, measurement=args.measurement, subsample=args.subsample, run=args.run, subrun=args.subrun)
 
 if __name__ == "__main__":
     main()

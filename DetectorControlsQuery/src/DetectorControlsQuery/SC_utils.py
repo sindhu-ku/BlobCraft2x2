@@ -54,7 +54,7 @@ def get_influx_db_meas_vars(meas_name):
 
 def get_gizmo_ground_tag(influxDB):
     database, measurement, variables = get_influx_db_meas_vars("ground_impedance")
-    ground_impedance=config_influx["ground_impedance"]
+    good_ground_impedance=config_influx["good_ground_impedance"]
     ground_impedance_err=config_influx["ground_impedance_err"]
 
     data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample_interval)
@@ -63,7 +63,7 @@ def get_gizmo_ground_tag(influxDB):
     bad_ground_values = []
 
     for entry in data:
-        if entry["resistance"] < ground_impedance-ground_impedance_err or entry["resistance"] > ground_impedance+ground_impedance_err: bad_ground_values.append(entry)
+        if entry["resistance"] < good_ground_impedance-ground_impedance_err or entry["resistance"] > good_ground_impedance+ground_impedance_err: bad_ground_values.append(entry)
 
     bag_ground_percent = len(bad_ground_values)*100./len(data)
     if bad_ground_values: print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({round(bag_ground_percent,2)}%) instances at these times: {bad_ground_values}")
@@ -74,11 +74,12 @@ def get_gizmo_ground_tag(influxDB):
 def get_LAr_level_tag(PsqlDB):
     data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], variable="LAr_level", tagid=config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=subsample_interval)
     good_LAr_level = config_psql["good_LAr_level"]
+    LAr_level_err = config_psql["LAr_level_err"]
     bad_level_values = []
     tag = "good"
 
     for entry in data:
-        if entry["LAr_level"] < good_LAr_level or entry["LAr_level"] > good_LAr_level:
+        if entry["LAr_level"] < good_LAr_level-LAr_level_err or entry["LAr_level"] > good_LAr_level+LAr_level_err:
             bad_level_values.append(entry)
             if(tag != "bad"): tag="bad"
 

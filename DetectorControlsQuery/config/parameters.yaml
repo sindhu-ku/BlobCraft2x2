@@ -27,7 +27,7 @@ influxdb:
     RTD_temperature: ["pt100", "temp", ["value"]]
 
  #runsdb stuff
-  ground_impedance: 242 #ohms
+  good_ground_impedance: 191 #ohms
   ground_impedance_err: 10 #ohms
   bad_ground_percent_threshold: 1 #in %. Eg. if >=1% of values are bad, the ground tag is set to bad
   drift_dist: 0.3 #meters
@@ -40,7 +40,7 @@ psql:
   cryostat_tag_dict:
     cryostat_pressure: "34"
     LAr_level: "37"
-    
+
   purity_mon_variables:
     electron_lifetime: "prm_lifetime"
     impurities: "prm_impurities"
@@ -52,4 +52,5 @@ psql:
     cathode_hv: "prm_cathode_hv"
     anodegrid_hv: "prm_anodegrid_hv"
 
-  good_LAr_level: 500.0 #mm #threshold above or below which LAr level is bad. For runsdb
+  good_LAr_level: 2330.0 #mm #threshold above or below which LAr level is bad. For runsdb
+  LAr_level_err: 2330.0 #mm allowed variation
