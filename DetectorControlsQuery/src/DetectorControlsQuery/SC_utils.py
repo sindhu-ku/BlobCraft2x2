@@ -4,7 +4,7 @@ import yaml
 import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
-from DataManager import *
+from .DataManager import *
 
 chicago_tz =  ZoneInfo("America/Chicago")
 

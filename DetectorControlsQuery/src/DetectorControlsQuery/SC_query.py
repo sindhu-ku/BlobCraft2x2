@@ -4,8 +4,8 @@ import yaml
 import datetime
 import argparse
 from dateutil import parser as date_parser
-from DB import *
-from SC_utils import *
+from .DB import *
+from .SC_utils import *
 
 def get_measurement_info(measurement, config_influx, config_psql):
     if measurement in config_influx.get('influx_SC_special_dict', {}):

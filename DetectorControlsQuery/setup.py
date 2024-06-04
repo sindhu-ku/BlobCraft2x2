@@ -6,10 +6,11 @@ setup(
     description='Query tool for DUNE 2x2 detector controls',
     author='Sindhujha Kumaran',
     author_email='s.kumaran@uci.edu',
-    packages=find_packages(),
+    packages=find_packages('src'),
+    package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
-            'query = SC_query:main',
+            'query = DetectorControlsQuery.SC_query:main',
         ],
     },
 
