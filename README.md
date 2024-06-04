@@ -32,7 +32,7 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T2
 - required arguments:
   - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
-  - --measurement: Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurments in the parameters/config.yaml (influx_SC_data_dict, cryostat_tag_dict, purity_mon_variables)
+  - --measurement: Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurments in the parameters/config.yaml (`influx_SC_data_dict`, `cryostat_tag_dict`, `purity_mon_variables`)
   - --run_number: Run number for runsdb (required when measurement is runsdb)
 - optional:
   - --subsample: Subsample interval in s like '60S' if you want coarser measurements
