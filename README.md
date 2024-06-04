@@ -12,8 +12,8 @@ Installation:
 git clone https://github.com/sindhu-ku/2x2_RunsDB.git
 cd 2x2_RunsDB/DetectorControlsQuery/
 ```
-Do a simple pip install or setup a virtual environment
-``
+Do a simple pip install or setup a virtual environment:
+```
 pip3 install .
 ```
 (or)
