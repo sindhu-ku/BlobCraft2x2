@@ -5,7 +5,7 @@ Author: Sindhujha Kumaran (s.kumaran@uci.edu)
 Pre-requisites: 
 - Fermilab VPN
 - Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov`
-- Get config/credentials.yaml from me (make sure to the port in influxdb credentials is the same one as you tunneled into)
+- Get config/credentials.yaml from me (make sure to the port in influxdb credentials is the same one as you tunneled into, eg. 8087 above)
 
 Installation:
 ```
