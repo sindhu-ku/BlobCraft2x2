@@ -2,13 +2,25 @@ Author: Sindhujha Kumaran (s.kumaran@uci.edu)
 
 ## Query 2x2 detector controls databases and save them to JSON files 
 
-Pre-requisites: Fermilab VPN, Tunnel into acd-daq05, ask me for config/credentials.yaml (make sure to change the tunnel port for influxdb credentials)
+Pre-requisites: 
+- Fermilab VPN
+- Tunnel into acd-daq05
+- Get config/credentials.yaml from me (make sure to the port in influxdb credentials is the same one as you tunneled into)
 
 Installation:
 ```
 git clone https://github.com/sindhu-ku/2x2_RunsDB.git
 cd 2x2_RunsDB/DetectorControlsQuery/
+```
+Do a simple pip install or setup a virtual environment
+``
 pip3 install .
+```
+(or)
+```
+python -m venv detcontrolsquery.venv
+source detcontrolsquery.venv/bin/activate
+pip install --upgrade pip setuptools wheel
 ```
 Usage:
 ```
