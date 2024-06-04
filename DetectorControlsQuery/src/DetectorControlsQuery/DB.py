@@ -75,6 +75,9 @@ class PsqlDBManager:
         return f"{measurement_name}_{self.start.isoformat()}_{self.end.isoformat()}.json"
 
 
+    def close_connection(self):
+        if self.connection is not None:
+            self.connection.close()
 
 class InfluxDBManager:
     def __init__(self, config, start, end):
@@ -110,3 +113,7 @@ class InfluxDBManager:
 
     def make_filename(self, database, measurement):
         return f'{database}_{measurement}_{self.start.isoformat()}_{self.end.isoformat()}.json'
+
+    def close_connection(self):
+        if self.client is not None:
+            self.client.close()

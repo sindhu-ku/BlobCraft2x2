@@ -75,6 +75,9 @@ def blob_maker(start, end, measurement, subsample=None, run=None, subrun=None):
         else:
             print(f"Measurement '{measurement}' not found in the configuration.")
 
+    influxDB.close_connection()
+    PsqlDB.close_connection()
+
     query_end = datetime.datetime.now()
     print("\n")
     print("----------------------------------------END OF QUERYING AND BLOB MAKING----------------------------------------")
