@@ -6,7 +6,7 @@ setup(
     description='Query tool for DUNE 2x2 databases (slow controls, light readout system)',
     author='Sindhujha Kumaran',
     author_email='s.kumaran@uci.edu',
-    packages=find_packages('src'),
+    packages = find_packages(),
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [

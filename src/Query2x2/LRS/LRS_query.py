@@ -1,13 +1,11 @@
 import argparse
+from datetime import datetime
 import yaml
 from ..DB import SQLiteManager
-from ..DataManager import dump
+from ..DataManager import dump, load_config
 
-def load_config(config_file):
-    with open(config_file, 'r') as f:
-        return yaml.safe_load(f)
-
-def LRS_blob_maker(run):
+def LRS_blob_maker(run, get_subrun_dict=False):
+    query_start = datetime.now()
     config = load_config("config/LRS_parameters.yaml")
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
     sqlite = SQLiteManager(config=config, run=run)
@@ -33,7 +31,7 @@ def LRS_blob_maker(run):
 
         config_ids = [moas_row['config_id'] for moas_row in moas_dict]
         if len(config_ids) > 1:
-            raise ValueError(f"Multiple config_id values found for MOAS version {moas_version}")
+            raise ValueError(f"ERROR: Multiple config_id values found for MOAS version {moas_version}")
         config_id = config_ids[0]
 
         moas_channels_dict = sqlite.get_moas_channels_data(config_id)
@@ -47,7 +45,11 @@ def LRS_blob_maker(run):
 
     sqlite.close_connection()
 
-    return subruns
+    query_end = datetime.now()
+    print("----------------------------------------END OF LRS QUERYING AND BLOB MAKING----------------------------------------")
+    print("Total querying and blob making time in s: ", query_end - query_start)
+
+    if get_subrun_dict: return subruns
 
 
 def main():

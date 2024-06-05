@@ -29,14 +29,15 @@ SC_query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level"
 
 This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T23:59:59.999999.json`
 
-- required arguments:
+- required arguments for simple query:
   - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --measurement: Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurments inside parameters/config.yaml (`influx_SC_data_dict`, `cryostat_tag_dict`, `purity_mon_variables`)
   - --run: Run number for runsdb (required when measurement is runsdb)
 - optional:
   - --subsample: Subsample interval in s like '60S' if you want coarser measurements
-  - --subrun: Subrun number for runsdb (optional)
+  - --subrun: Subrun number for runsdb
+  - --subrun_dict: Dictionary of subruns with start and end times. Required for runsdb if start and end are not given
 
 ### Currently supported measurements:
   - InfluxDB (more variables can be easily added in config/parameters.yaml):

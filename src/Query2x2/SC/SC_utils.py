@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import yaml
 import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
@@ -11,15 +10,6 @@ chicago_tz =  ZoneInfo("America/Chicago")
 config_influx = {}
 config_psql = {}
 subsample_interval = None
-
-def load_config(config_file):
-    global config_influx, config_psql
-    config=None
-    with open(config_file, "r") as yaml_file:
-        config=yaml.safe_load(yaml_file)
-
-    config_influx=config["influxdb"]
-    config_psql=config["psql"]
 
 def get_mean(data, varname):
     df = pd.DataFrame(data)
@@ -146,7 +136,10 @@ def calculate_electric_fields(influxDB):
 
 def dump_SC_data(influxDB, PsqlDB, config_file, subsample=None, json_filename="", dump_all_data=False):
 
-    load_config(config_file)
+    global config_influx, config_psql
+    config=load_config(config_file)
+    config_influx=config["influxdb"]
+    config_psql=config["psql"]
 
     global subsample_interval
     subsample_interval=subsample

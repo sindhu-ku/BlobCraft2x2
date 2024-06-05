@@ -38,7 +38,7 @@ class PsqlDBManager:
         return years, months
 
     def get_cryostat_data(self, table_prefix, variable, tagid):
-        print(f"\n**********************************************Querying {variable} data from PostgreSQL Database**********************************************")
+        print(f"\nQuerying {variable} data from PostgreSQL Database")
 
         result_data = []
         years, months = self.get_years_months()
@@ -54,7 +54,7 @@ class PsqlDBManager:
         return result_data
 
     def get_purity_monitor_data(self, tablename, variables=[], last_value=False):
-        print(f"\n**********************************************Querying {variables} from purity monitor measurements from PostgreSQL Database**********************************************")
+        print(f"\nQuerying {variables} from purity monitor measurements from PostgreSQL Database")
 
         result_data = []
         columns = [alc.Column("timestamp")] + [alc.Column(var) for var in variables]
@@ -95,7 +95,7 @@ class InfluxDBManager:
         return fields
 
     def fetch_measurement_data(self, database, measurement, variables, subsample=None):
-        print(f"\n**********************************************Querying {variables} in {measurement} from {database} from InfluxDB Database**********************************************")
+        print(f"\nQuerying {variables} in {measurement} from {database} from InfluxDB Database")
         start_utime = int(self.start.timestamp() * 1e3)
         end_utime = int(self.end.timestamp() * 1e3)
         query = ''
@@ -152,7 +152,7 @@ class SQLiteManager:
             subrun_number = subrun_info['subrun']
             subrun_times = {
                 'start_time': datetime.fromtimestamp(subrun_info['start_time_unix'], chicago_tz),
-                'end_time': datetime.fromtimestamp(subrun_info['start_time_unix'], chicago_tz)
+                'end_time': datetime.fromtimestamp(subrun_info['end_time_unix'], chicago_tz)
             }
             subruns[subrun_number] = subrun_times
 
@@ -160,16 +160,12 @@ class SQLiteManager:
 
     def get_moas_version_data(self, moas_filename):
         moas_version = moas_filename[5:-4]
-        if not moas_version:
-            raise ValueError(f"MOAS file not found!")
         moas_columns = self.config.get('moas_versions', [])
-        if not moas_columns:
-            raise ValueError("No columns specified for moas_versions in the config file.")
         moas_data = self.query_data(table_name='moas_versions', conditions=[f"version=='{moas_version}'"], columns=moas_columns)
         if not moas_data:
             raise ValueError(f"ERROR: No data found for MOAS version extracted from filename: {moas_filename}")
         if len(moas_data) > 1:
-            raise ValueError(f"Multiple MOAS versions found for version {moas_version}")
+            raise ValueError(f"ERROR: Multiple MOAS versions found for version {moas_version}")
         return [dict(zip(moas_columns, row)) for row in moas_data]
 
     def get_moas_channels_data(self, config_id):

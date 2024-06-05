@@ -3,9 +3,13 @@
 import pandas as pd
 import json
 from zoneinfo import ZoneInfo
+import yaml
 
 chicago_tz =  ZoneInfo("America/Chicago")
 
+def load_config(config_file):
+    with open(config_file, 'r') as f:
+        return yaml.safe_load(f)
 
 def dump(data, filename):
     if not data:
