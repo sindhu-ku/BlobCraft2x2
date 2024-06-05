@@ -7,14 +7,19 @@ import sqlite3
 from influxdb import InfluxDBClient
 
 chicago_tz =  ZoneInfo("America/Chicago")
+
 class PsqlDBManager:
-    def __init__(self, config, start, end):
+    def __init__(self, config):
         self.config = config
-        self.start = start
-        self.end = end
+        self.start = None
+        self.end = None
         self.url = self.create_url()
         self.engine = alc.create_engine(self.url)
         self.connection = self.engine.connect()
+
+    def set_time_range(self, start, end):
+        self.start = start
+        self.end = end
 
     def create_url(self):
         url_template = "postgresql+psycopg2://{username}:{password}@{hostname}/{dbname}"
@@ -83,11 +88,15 @@ class PsqlDBManager:
             self.connection.close()
 
 class InfluxDBManager:
-    def __init__(self, config, start, end):
+    def __init__(self, config):
         self.config = config
+        self.start = None
+        self.end = None
+        self.client = InfluxDBClient(host=self.config["host"], port=self.config["port"])
+
+    def set_time_range(self, start, end):
         self.start = start
         self.end = end
-        self.client = InfluxDBClient(host=self.config["host"], port=self.config["port"])
 
     def fetch_measurement_fields(self, database, measurement):
         result = self.client.query(f'SHOW FIELD KEYS ON "{database}" FROM "{measurement}"')

@@ -73,13 +73,15 @@ def SC_blob_maker(measurement, start_time=None, end_time=None, subsample=None, r
         raise ValueError("ERROR: You must provide a run number!")
 
     global param_config_file
-
+    
     cred_config_file = "config/SC_credentials.yaml"
     param_config_file = "config/SC_parameters.yaml"
 
     cred_config = load_config(cred_config_file)
     param_config = load_config(param_config_file)
 
+    PsqlDB = PsqlDBManager(config=cred_config["psql"])
+    influxDB = InfluxDBManager(config=cred_config["influxdb"])
     if subrun_dict:
         start_times = []
         end_times = []
@@ -97,11 +99,8 @@ def SC_blob_maker(measurement, start_time=None, end_time=None, subsample=None, r
         output_json_filename = f"SlowControls_run-{run}_{start_times[0].isoformat()}_{end_times[-1].isoformat()}.json"
         for  subrun, start, end in zip(subruns, start_times, end_times):
             print(f"----------------------------------------Fetching Slow Controls data for the time period {start} to {end}, subrun={subrun}----------------------------------------")
-            PsqlDB = PsqlDBManager(config=cred_config["psql"], start=start, end=end)
-            influxDB = InfluxDBManager(config=cred_config["influxdb"], start=start, end=end)
-            data[f'subrun_{subrun}'] = dump_SC_data(influxDB=influxDB, PsqlDB=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=False)
-            influxDB.close_connection()
-            PsqlDB.close_connection()
+            PsqlDB.set_time_range(start, end)
+            influxDB.set_time_range(start, end)
         dump(data, output_json_filename)
     else:
         print(f"----------------------------------------Fetching Slow Controls data for the time period {start_time} to {end_time}----------------------------------------")
@@ -111,12 +110,12 @@ def SC_blob_maker(measurement, start_time=None, end_time=None, subsample=None, r
         except ValueError as e:
             print(f"Error parsing date: {e}")
             return
-        PsqlDB = PsqlDBManager(config=cred_config["psql"], start=start, end=end)
-        influxDB = InfluxDBManager(config=cred_config["influxdb"], start=start, end=end)
+        PsqlDB.set_time_range(start, end)
+        influxDB.set_time_range(start, end)
         process_single_instance(influxDB, PsqlDB, param_config, measurement, start, end, subsample, run, subrun)
 
-        influxDB.close_connection()
-        PsqlDB.close_connection()
+    influxDB.close_connection()
+    PsqlDB.close_connection()
 
     query_end = datetime.now()
     print("\n")
