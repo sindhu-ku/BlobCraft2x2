@@ -10,12 +10,14 @@ chicago_tz =  ZoneInfo("America/Chicago")
 config_influx = {}
 config_psql = {}
 subsample_interval = None
+influxDB = None
+PsqlDB = None
 
 def get_mean(data, varname):
     df = pd.DataFrame(data)
     return df[varname].mean()
 
-def influx_blind_dump(influxDB):
+def influx_blind_dump():
     data_dict = config_influx.get("influx_SC_data_dict", {})
     for database, (measurements, variables) in data_dict.items():
         if not variables:
@@ -24,7 +26,7 @@ def influx_blind_dump(influxDB):
             result_data = DataManager(influxDB.fetch_measurement_data(database, measurement, measurement_variables))
             dump(result_data.format(source="influx", variables=measurement_variables, subsample_interval=subsample_interval), filename=influxDB.make_filename(database, measurement))
 
-def psql_blind_dump(PsqlDB):
+def psql_blind_dump():
     purity_mon_dict = config_psql.get("purity_mon_variables", {})
     varnames = list(purity_mon_dict.keys())
     variables = list(purity_mon_dict.values())
@@ -42,7 +44,7 @@ def get_influx_db_meas_vars(meas_name):
         raise ValueError(f"The given measurement name {meas_name} is not in the dict. Check influx_SC_special_dict in config/parameters.yaml")
     return database, measurement, variables
 
-def get_gizmo_ground_tag(influxDB):
+def get_gizmo_ground_tag():
     database, measurement, variables = get_influx_db_meas_vars("ground_impedance")
     good_ground_impedance=config_influx["good_ground_impedance"]
     ground_impedance_err=config_influx["ground_impedance_err"]
@@ -64,7 +66,7 @@ def get_gizmo_ground_tag(influxDB):
 
     return tag, len(bad_ground_values)
 
-def get_LAr_level_tag(PsqlDB):
+def get_LAr_level_tag():
     data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], variable="LAr_level", tagid=config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=subsample_interval)
     good_LAr_level = config_psql["good_LAr_level"]
     LAr_level_err = config_psql["LAr_level_err"]
@@ -85,7 +87,7 @@ def get_LAr_level_tag(PsqlDB):
 
     return tag
 
-def calculate_effective_shell_resistances(influxDB, V_set=0.0):
+def calculate_effective_shell_resistances(V_set=0.0):
     database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
     effective_shell_resistances = np.zeros(4)
     pick_off_voltages = np.zeros(4)
@@ -107,7 +109,7 @@ def calculate_effective_shell_resistances(influxDB, V_set=0.0):
 
     return pick_off_voltages, effective_shell_resistances
 
-def calculate_electric_fields(influxDB):
+def calculate_electric_fields():
     database, measurement, variables = get_influx_db_meas_vars("set_voltage")
     electric_fields =  np.zeros(4)
     pick_off_voltages = np.zeros(4)
@@ -134,24 +136,25 @@ def calculate_electric_fields(influxDB):
 
     return mean_voltage, pick_off_voltages, electric_fields
 
-def dump_SC_data(influxDB, PsqlDB, config_file, subsample=None, json_filename="", dump_all_data=False):
+def dump_SC_data(influxDB_manager, PsqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False):
 
-    global config_influx, config_psql
+    global config_influx, config_psql, subsample_interval, influxDB, PsqlDB
+
     config=load_config(config_file)
     config_influx=config["influxdb"]
     config_psql=config["psql"]
-
-    global subsample_interval
     subsample_interval=subsample
+    influxDB=influxDB_manager
+    PsqlDB=PsqlDB_manager
 
     if(dump_all_data):
-        influx_blind_dump(influxDB=influxDB)
-        psql_blind_dump(PsqlDB=PsqlDB)
+        influx_blind_dump()
+        psql_blind_dump()
     else:
-        ground_tag, shorts_num = get_gizmo_ground_tag(influxDB=influxDB)
-        LAr_tag = get_LAr_level_tag(PsqlDB=PsqlDB)
+        ground_tag, shorts_num = get_gizmo_ground_tag()
+        LAr_tag = get_LAr_level_tag()
         electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
-        set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields(influxDB=influxDB)
+        set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
 
         data =\
         {
