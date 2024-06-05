@@ -5,6 +5,9 @@ import argparse
 from dateutil import parser as date_parser
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
+from zoneinfo import ZoneInfo
+
+chicago_tz =  ZoneInfo("America/Chicago")
 
 measurement=''
 param_config_file = ''
@@ -37,9 +40,9 @@ def parse_datetime(date_str, is_start):
     dt = date_parser.parse(date_str)
     if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
         if is_start:
-            return datetime.combine(dt.date(), time.min)
+            return datetime.combine(dt.date(), time.min, tzinfo=chicago_tz)
         else:
-            return datetime.combine(dt.date(), time.max)
+            return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
     return dt
 
 def process_single_instance(measurement):
