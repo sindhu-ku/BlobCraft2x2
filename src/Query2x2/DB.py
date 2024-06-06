@@ -75,7 +75,7 @@ class PsqlDBManager:
                 return result_data[-1]
             else:
                 print(f"WARNING: No data found for the given time period")
-                return self.start, {var: 0.0 for var in variables}
+                return self.start, 0.0
         else:
             return result_data
 
@@ -103,10 +103,18 @@ class InfluxDBManager:
         fields = [field["fieldKey"] for field in result.get_points()]
         return fields
 
-    def fetch_measurement_data(self, database, measurement, variables, subsample=None):
+    def fetch_measurements(self, database):
+        query = f'SHOW MEASUREMENTS ON "{database}"'
+        result = self.client.query(query)
+        measurements = [measurement["name"] for measurement in result.get_points()]
+        return measurements
+
+    def fetch_measurement_data(self, database, measurement, variables=[], subsample=None):
         print(f"\nQuerying {variables} in {measurement} from {database} from InfluxDB Database")
+
         start_utime = int(self.start.timestamp() * 1e3)
         end_utime = int(self.end.timestamp() * 1e3)
+
         query = ''
         variable_str = ', '.join(variables)
 
@@ -131,25 +139,26 @@ class InfluxDBManager:
             self.client.close()
 
 class SQLiteManager:
-    def __init__(self, config, run):
-        self.config = config
+    def __init__(self, filename, run):
         self.run = run
-        self.filename = self.config.get('filename')
-        if not self.filename:
-            raise ValueError("Database filename not specified in the config file.")
+        self.filename = filename
         self.conn = sqlite3.connect(self.filename)
         self.cursor = self.conn.cursor()
 
-    def query_data(self, table_name, conditions, columns=None):
-        if columns:
-            columns_str = ", ".join(columns)
-        else:
-            columns_str = "*"
+    def query_data(self, table_name, conditions, columns):
+        columns_str = ", ".join(columns)
         condition_str = " AND ".join(conditions)
         query = f"SELECT {columns_str} FROM {table_name} WHERE {condition_str}"
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
         return rows
+
+    def get_column_names(self, table_name):
+        query = f"PRAGMA table_info({table_name})"
+        self.cursor.execute(query)
+        columns_info = self.cursor.fetchall()
+        column_names = [info[1] for info in columns_info]  # The second element in each tuple is the column name
+        return column_names
 
     def get_subruns(self):
         subrun_columns = ['subrun', 'start_time_unix', 'end_time_unix']
@@ -167,18 +176,18 @@ class SQLiteManager:
 
         return subruns
 
-    def get_moas_version_data(self, moas_filename):
+    def get_moas_version_data(self, moas_filename, moas_columns):
         moas_version = moas_filename[5:-4]
-        moas_columns = self.config.get('moas_versions', [])
+
         moas_data = self.query_data(table_name='moas_versions', conditions=[f"version=='{moas_version}'"], columns=moas_columns)
+
         if not moas_data:
             raise ValueError(f"ERROR: No data found for MOAS version extracted from filename: {moas_filename}")
         if len(moas_data) > 1:
             raise ValueError(f"ERROR: Multiple MOAS versions found for version {moas_version}")
         return [dict(zip(moas_columns, row)) for row in moas_data]
 
-    def get_moas_channels_data(self, config_id):
-        moas_channels_columns = self.config.get('moas_channels', [])
+    def get_moas_channels_data(self, config_id, moas_channels_columns):
         moas_channels_data = self.query_data(table_name='moas_channels', conditions=[f"config_id=={config_id}"], columns=moas_channels_columns)
         if not moas_channels_data:
             raise ValueError(f"ERROR: No MOAS channels data found")

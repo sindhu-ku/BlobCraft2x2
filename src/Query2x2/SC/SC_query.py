@@ -5,9 +5,7 @@ import argparse
 from dateutil import parser as date_parser
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
-from zoneinfo import ZoneInfo
 
-chicago_tz =  ZoneInfo("America/Chicago")
 
 measurement=''
 param_config_file = ''
@@ -32,18 +30,26 @@ def get_measurement_info():
         return 'psql_cryostat', (table_prefix, variable, tagid)
     elif measurement in config_psql.get('purity_mon_variables', {}):
         tablename = config_psql['purity_mon_table']
-        variable = config_psql['purity_mon_variables'][measurement]
+        variable = [config_psql['purity_mon_variables'][measurement]]
         return 'psql_purity_mon', (tablename, measurement, variable)
+    elif measurement == "purity_monitor":
+        tablename = config_psql['purity_mon_table']
+        table = config_psql['purity_mon_variables']
+        measurements = list(table.keys())
+        variables = list(table.values())
+        return 'psql_purity_mon', (tablename, measurements, variables)
     raise ValueError(f"Configuration does not support fetching {measurement}. Check influx_SC_special_dict, cryostat_tag_dict, purity_mon_variables in config/parameters.yaml to make sure your measurement is present there")
 
 def parse_datetime(date_str, is_start):
     dt = date_parser.parse(date_str)
+    if not dt.tzinfo:
+        dt = dt.replace(tzinfo=chicago_tz)
     if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
         if is_start:
             return datetime.combine(dt.date(), time.min, tzinfo=chicago_tz)
         else:
             return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
-    return dt
+    return dt.astimezone(chicago_tz)
 
 def process_single_instance(measurement):
     global config_influx, config_psql
@@ -56,12 +62,14 @@ def process_single_instance(measurement):
             output_json_filename = f"SlowControls_run-{run}_subrun-{subrun}_{start.isoformat()}_{end.isoformat()}.json"
         else:
             output_json_filename = f"SlowControls_run-{run}_{start.isoformat()}_{end.isoformat()}.json"
-
+        print(start, end)
         data = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, json_filename=output_json_filename, subsample=subsample, dump_all_data=False)
         dump(data, output_json_filename)
 
     elif measurement == "all":
-        dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
+        output_json_filename = f"SlowControls_{start.isoformat()}_{end.isoformat()}.json"
+        data = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
+        dump(data, output_json_filename)
 
     else:
         source, info = get_measurement_info()
@@ -72,8 +80,8 @@ def process_single_instance(measurement):
             table_prefix, variable, tagid = info
             dump_single_cryostat(PsqlDB=PsqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=subsample)
         elif source == 'psql_purity_mon':
-            tablename, measurement, variable = info
-            dump_single_prm(PsqlDB=PsqlDB, tablename=tablename, measurement=measurement, variable=variable, subsample=subsample)
+            tablename, measurements, variables = info
+            dump_single_prm(PsqlDB=PsqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=subsample)
         else:
             print(f"Measurement '{measurement}' not found in the configuration.")
 
@@ -115,11 +123,19 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
             raise ValueError("ERROR: lengths of start, end times and subruns are not equal!")
 
         data = {}
-        output_json_filename = f"SlowControls_run-{run}_{start_times[0].isoformat()}_{end_times[-1].isoformat()}.json"
+
+        if measurement=="runsdb": output_json_filename = f"SlowControls_summary_run-{run}_{start_times[0].isoformat()}_{end_times[-1].isoformat()}.json"
+        elif measurement=="all":  output_json_filename = f"SlowControls_all-measurements_run-{run}_{start_times[0].isoformat()}_{end_times[-1].isoformat()}.json"
+        else: raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsb' if subrun_dict is used!")
+
         for  subrun, start, end in zip(subruns, start_times, end_times):
             print(f"----------------------------------------Fetching Slow Controls data for the time period {start} to {end}, subrun={subrun}----------------------------------------")
             PsqlDB.set_time_range(start, end)
             influxDB.set_time_range(start, end)
+            if measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=False)
+            elif measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
+            else: raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsb' if subrun_dict is used!")
+
         dump(data, output_json_filename)
     else:
         print(f"----------------------------------------Fetching Slow Controls data for the time period {start_time} to {end_time}----------------------------------------")
@@ -146,15 +162,12 @@ def main():
     parser.add_argument('--start', type=str, help="Start times for the query (comma-separated if multiple, various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
     parser.add_argument('--end', type=str, help="End times for the query (comma-separated if multiple, various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')")
     parser.add_argument('--measurement', type=str, required=True, help="Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurements in the parameters/config.yaml (influx_SC_data_dict, cryostat_tag_dict, purity_mon_variables)")
-    parser.add_argument('--subsample', type=str, default=None, help="Subsample interval in s like '60S' (optional)")
     parser.add_argument('--run', type=int, default=None, help="Run number for runsdb (required when measurement is runsdb)")
-    parser.add_argument('--subrun', type=str, default=None, help="subrun number for runsdb (optional)")
-    parser.add_argument('--subrun_dict', type=dict, default=None, help="subrun dict for dumping all subruns in one json for runsdb (optional)")
+    parser.add_argument('--subsample', type=str, default=None, help="Subsample interval in s like '60S' (optional)")
 
     args = parser.parse_args()
 
+    SC_blob_maker(start_time=args.start, end_time=args.end, measurement_name=args.measurement, subsample_interval=args.subsample, run_number=args.run)
 
-
-    SC_blob_maker(start_time=args.start, end_time=args.end, measurement_name=args.measurement, subsample_interval=args.subsample, run_number=args.run, subrun_number=args.subrun, subrun_dict=args.subrun_dict)
 if __name__ == "__main__":
     main()

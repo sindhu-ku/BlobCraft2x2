@@ -1,40 +1,59 @@
 filename: "config/lrsdetconfig.db"
-lrs_runs_data:
+
+
+# lrs_runs_data:
+#   - filename
+#   - size
+#   - application_version
+#   - run_mode
+#   - start_time_unix
+#   - end_time_unix
+#   - run_start_instance
+#   - morcs_run_nr
+#   - subrun
+#   - first_event_tai
+#   - last_event_tai
+#   - active_moas
+lrs_runs_data_summary:
   - filename
-#  - size
   - application_version
   - run_mode
   - start_time_unix
   - end_time_unix
   - run_start_instance
-#  - morcs_run_nr
-#  - subrun
   - first_event_tai
   - last_event_tai
   - active_moas
-moas_versions:
+
+# moas_versions:
+#   - config_id
+#   - tag
+#   - version
+#   - is_active
+moas_versions_summary:
   - config_id
   - tag
+
 moas_channels:
   - adc
   - tpc
-  #- adc_slot
-  #- adc_nr
-  #- adc_serial
-  #- adc_serial_dec
-  #- adc_0in_chan
-  #- adc_1in_chan
-  #- global_adc_id
+  - adc_slot
+  - adc_nr
+  - adc_serial
+  - adc_serial_dec
+  - adc_0in_chan
+  - adc_1in_chan
+  - global_adc_id
   - sipm_bias_chan
   - sipm_bias
-  # - scable_id
-  # - mod_num
-  # - vga_pos
-  # - vga_board_num
+  - scable_id
+  - mod_num
+  - vga_pos
+  - vga_board_num
   - vga_gain
-  # - sipmpsctrl_unit
-  # - sipmpsctrl_board_serial
-  # - led_num
-  # - ser_res_bit
-  # - par_res_bit
-  # - led_group_id_warm
+  - sipmpsctrl_unit
+  - sipmpsctrl_board_serial
+  - led_num
+  - ser_res_bit
+  - par_res_bit
+  - led_group_id_warm
