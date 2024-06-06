@@ -42,7 +42,7 @@ def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
         for row in data:
             row.update({col: unix_to_iso(row[col]) for col in unix_time_columns if col in row})
 
-        moas_filename = data[0]["active_moas"]
+        moas_filename = data[0]["active_moas"] #moas filename is stored here which can then be used to get moas info (especially config id)
         if not moas_filename:
             raise ValueError(f"ERROR: No MOAS version found")
 
@@ -56,9 +56,8 @@ def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
         config_ids = [moas_row['config_id'] for moas_row in moas_dict]
         if len(config_ids) > 1:
             raise ValueError(f"ERROR: Multiple config_id values found for MOAS version {moas_version}")
-        config_id = config_ids[0]
 
-        moas_channels_dict = sqlite.get_moas_channels_data(config_id, moas_channels_columns)
+        moas_channels_dict = sqlite.get_moas_channels_data(config_ids[0], moas_channels_columns) #Then get the channel information based on the config id for that particular run/subrun
         output[f"subrun_{subrun}"]["moas_channels"] = moas_channels_dict
 
     if any(output.values()):

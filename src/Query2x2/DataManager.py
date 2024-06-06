@@ -37,7 +37,7 @@ class DataManager:
                 self.process_dataframe(df, variables, subsample_interval, tags_dict)
         elif source=="psql":
             df = pd.DataFrame(self.data, columns=["time"] + variables)
-            df["time"] = pd.to_datetime(df["time"], unit="ms")
+            df["time"] = pd.to_datetime(df["time"], unit="ms") #because cryostat measurements are in ms
             self.process_dataframe(df, variables, subsample_interval)
         else:
             raise ValueError("Unsupported source format. Can only handle datatypes from influxsb and psql databases")
@@ -45,7 +45,7 @@ class DataManager:
         return self.formatted_data
 
     def process_dataframe(self, df, variables, subsample_interval, tags_dict=None):
-        def format_time(time_str):
+        def format_time(time_str): #because sometimes isoformat in influxdb can be  of this format 2024-05-28T07:54:56Z and pd.to_datetime complains without the microseconds
             if not isinstance(time_str, str): return time_str
             if '.' in time_str:
                 split_time = time_str.split('.')

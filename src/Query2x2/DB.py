@@ -46,7 +46,7 @@ class PsqlDBManager:
         print(f"\nQuerying {variable} data from PostgreSQL Database")
 
         result_data = []
-        years, months = self.get_years_months()
+        years, months = self.get_years_months() # we have to do this because cryostat data is split into multiple tables based on years and months. This should account for runs spanning across months or yeara
         start_utime = int(self.start.timestamp() * 1e3)
         end_utime = int(self.end.timestamp() * 1e3)
         for y in years:
@@ -184,7 +184,7 @@ class SQLiteDBManager:
         if not moas_data:
             raise ValueError(f"ERROR: No data found for MOAS version extracted from filename: {moas_filename}")
         if len(moas_data) > 1:
-            raise ValueError(f"ERROR: Multiple MOAS versions found for version {moas_version}")
+            raise ValueError(f"ERROR: Multiple MOAS versions found for this run/subrun {moas_version}")
         return [dict(zip(moas_columns, row)) for row in moas_data]
 
     def get_moas_channels_data(self, config_id, moas_channels_columns):
