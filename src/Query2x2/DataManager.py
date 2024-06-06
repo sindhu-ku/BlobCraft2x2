@@ -45,7 +45,23 @@ class DataManager:
         return self.formatted_data
 
     def process_dataframe(self, df, variables, subsample_interval, tags_dict=None):
-        df["time"] = pd.to_datetime(df["time"], utc=True).dt.tz_convert(chicago_tz)
+        def format_time(time_str):
+            if not isinstance(time_str, str): return time_str
+            if '.' in time_str:
+                split_time = time_str.split('.')
+                microseconds = split_time[1]
+                if len(microseconds) < 7:
+                    microseconds += '0' * (7 - len(microseconds))
+                    return split_time[0] + '.' + microseconds + 'Z'
+            elif 'Z' in time_str:
+                return time_str[:-1] + '0' * (6 - len(time_str.split('.')[0])) + 'Z'
+            else:
+                return time_str + ".000000Z"
+
+        df["time"] = df["time"].apply(format_time)
+        df["time"] = pd.to_datetime(df["time"], utc=True)
+        df["time"] = df["time"].dt.tz_convert(chicago_tz)
+
         if subsample_interval is not None:
             formatted_entries = self.subsample(df, subsample_interval=subsample_interval)
         else:
