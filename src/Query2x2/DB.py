@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from datetime import datetime
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 import sqlalchemy as alc
 import sqlite3
@@ -66,18 +67,32 @@ class PsqlDBManager:
         tab = alc.table(tablename, *columns)
 
         query_columns = [tab.c.timestamp] + [tab.c[var] for var in variables]
-        query = alc.select(*query_columns).select_from(tab).where(alc.and_(tab.c.timestamp >= self.start, tab.c.timestamp <= self.end))
 
-        result = self.connection.execute(query)
-        result_data.extend(result.all())
         if last_value:
-            if result_data:
-                return result_data[-1]
-            else:
-                print(f"WARNING: No data found for the given time period")
-                return self.start, 0.0
+            day_increment = timedelta(days=1)
+            while not result_data:
+                initial_start = self.start
+                query = alc.select(*query_columns).select_from(tab).where(alc.and_(tab.c.timestamp >= self.start, tab.c.timestamp <= self.end))
+                result = self.connection.execute(query)
+                result_data.extend(result.all())
+
+                if result_data:
+                    return result_data[-1]
+                else:
+                    print(f"WARNING: No data found for the given time period {self.start} to {self.end}")
+                    self.start = initial_start - day_increment
+                    self.end = initial_start
+                    print(f"Extending time range by one day before the subrun: {self.start} to {self.end} to obtain the last purity monitor measurement")
         else:
-            return result_data
+            query = alc.select(*query_columns).select_from(tab).where(alc.and_(tab.c.timestamp >= self.start, tab.c.timestamp <= self.end))
+            result = self.connection.execute(query)
+            result_data.extend(result.all())
+
+            if result_data:
+                return result_data
+            else:
+                print(f"WARNING: No data found for the given time period from {self.start} to {self.end}")
+                return result_data
 
     def make_filename(self, measurement_name):
         return f"{measurement_name}_{self.start.isoformat()}_{self.end.isoformat()}.json"
