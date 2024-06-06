@@ -34,7 +34,7 @@ def get_measurement_info():
     elif glob.measurement in glob.config_pqsl.get('purity_mon_variables', {}):
         tablename = glob.config_pqsl['purity_mon_table']
         variable = [glob.config_pqsl['purity_mon_variables'][glob.measurement]]
-        return 'psql_purity_mon', (tablename, glob.measurement, variable)
+        return 'psql_purity_mon', (tablename, [glob.measurement], variable)
     elif glob.measurement == "purity_monitor":
         tablename = glob.config_pqsl['purity_mon_table']
         table = glob.config_pqsl['purity_mon_variables']
@@ -76,13 +76,13 @@ def process_single_instance():
         source, info = get_measurement_info()
         if source == 'influx':
             database, measurement, variables = info
-            dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=subsample)
+            dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample)
         elif source == 'psql_cryostat':
             table_prefix, variable, tagid = info
-            dump_single_cryostat(psqlDB=glob.psqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=subsample)
+            dump_single_cryostat(psqlDB=glob.psqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=glob.subsample)
         elif source == 'psql_purity_mon':
             tablename, measurements, variables = info
-            dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=subsample)
+            dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=glob.subsample)
         else:
             print(f"Measurement '{measurement}' not found in the configuration.")
 
