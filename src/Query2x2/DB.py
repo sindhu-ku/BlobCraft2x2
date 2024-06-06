@@ -138,7 +138,7 @@ class InfluxDBManager:
         if self.client is not None:
             self.client.close()
 
-class SQLiteManager:
+class SQLiteDBManager:
     def __init__(self, filename, run):
         self.run = run
         self.filename = filename

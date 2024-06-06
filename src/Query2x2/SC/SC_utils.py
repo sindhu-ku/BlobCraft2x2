@@ -7,56 +7,61 @@ from ..DataManager import *
 
 chicago_tz = ZoneInfo("America/Chicago")
 
-config_influx = {}
-config_psql = {}
-subsample_interval = None
-influxDB = None
-PsqlDB = None
+class SCUtilsGlobals:
+    def __init__(self):
+        config_influx = {}
+        config_psql = {}
+        subsample_interval = None
+        influxDB = None
+        psqlDB = None
+
+
+glob = SCUtilsGlobals()
 
 def get_mean(data, varname):
     df = pd.DataFrame(data)
     return df[varname].mean()
 
 def influx_blind_dump():
-    databases = config_influx.get("influx_SC_db", [])
+    databases = glob.config_influx.get("influx_SC_db", [])
     merged_data = {}
     for database in databases:
-        measurements = influxDB.fetch_measurements(database)
+        measurements = glob.influxDB.fetch_measurements(database)
         for measurement in measurements:
-            variables = influxDB.fetch_measurement_fields(database, measurement)
-            result_data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables))
-            formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=subsample_interval)
-            merged_data[measurement] = formatted_data
+            variables = glob.influxDB.fetch_measurement_fields(database, measurement)
+            result_data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables))
+            formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+            merged_data[f'{database}_{measurement}'] = formatted_data
     return merged_data
 
 def psql_blind_dump():
     merged_data = {}
-    purity_mon_dict = config_psql.get("purity_mon_variables", {})
+    purity_mon_dict = glob.config_psql.get("purity_mon_variables", {})
     varnames = list(purity_mon_dict.keys())
     variables = list(purity_mon_dict.values())
-    purity_monitor = DataManager(PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=variables))
-    formatted_data = purity_monitor.format(source="psql", variables=varnames, subsample_interval=subsample_interval)
+    purity_monitor = DataManager(glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=variables))
+    formatted_data = purity_monitor.format(source="psql", variables=varnames, subsample_interval=glob.subsample_interval)
     merged_data["purity_monitor"] = formatted_data
 
-    cryostat_dict = config_psql.get("cryostat_tag_dict", {})
+    cryostat_dict = glob.config_psql.get("cryostat_tag_dict", {})
     for varname, tagid in cryostat_dict.items():
-        data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], variable=varname, tagid=tagid))
-        formatted_data = data.format(source="psql", variables=[varname], subsample_interval=subsample_interval)
+        data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable=varname, tagid=tagid))
+        formatted_data = data.format(source="psql", variables=[varname], subsample_interval=glob.subsample_interval)
         merged_data[varname] = formatted_data
     return merged_data
 
 def get_influx_db_meas_vars(meas_name):
-    database, measurement, variables = config_influx.get("influx_SC_special_dict", {}).get(meas_name, [None, None, None])
+    database, measurement, variables = glob.config_influx.get("influx_SC_special_dict", {}).get(meas_name, [None, None, None])
     if not (database and measurement and variables):
         raise ValueError(f"The given measurement name {meas_name} is not in the dict. Check influx_SC_special_dict in config/parameters.yaml")
     return database, measurement, variables
 
 def get_gizmo_ground_tag():
     database, measurement, variables = get_influx_db_meas_vars("ground_impedance")
-    good_ground_impedance = config_influx["good_ground_impedance"]
-    ground_impedance_err = config_influx["ground_impedance_err"]
+    good_ground_impedance = glob.config_influx["good_ground_impedance"]
+    ground_impedance_err = glob.config_influx["ground_impedance_err"]
 
-    data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample_interval)
+    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
 
     tag = "bad"
     bad_ground_values = []
@@ -71,15 +76,15 @@ def get_gizmo_ground_tag():
     bag_ground_percent = len(bad_ground_values) * 100. / len(data)
     if bad_ground_values:
         print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({round(bag_ground_percent, 2)}%) instances at these times: {bad_ground_values}")
-    if bag_ground_percent < config_influx["bad_ground_percent_threshold"]:
+    if bag_ground_percent < glob.config_influx["bad_ground_percent_threshold"]:
         tag = "good"
 
     return tag, len(bad_ground_values)
 
 def get_LAr_level_tag():
-    data = DataManager(PsqlDB.get_cryostat_data(table_prefix=config_psql["cryo_table_prefix"], variable="LAr_level", tagid=config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=subsample_interval)
-    good_LAr_level = config_psql["good_LAr_level"]
-    LAr_level_err = config_psql["LAr_level_err"]
+    data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable="LAr_level", tagid=glob.config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=glob.subsample_interval)
+    good_LAr_level = glob.config_psql["good_LAr_level"]
+    LAr_level_err = glob.config_psql["LAr_level_err"]
     bad_level_values = []
     tag = "bad"
 
@@ -103,12 +108,12 @@ def calculate_effective_shell_resistances(V_set=0.0):
     effective_shell_resistances = np.zeros(4)
     pick_off_voltages = np.zeros(4)
 
-    data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample_interval)
+    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
 
     if not data:
         return pick_off_voltages, effective_shell_resistances
 
-    R_pick = config_influx["pick_off_resistance"]
+    R_pick = glob.config_influx["pick_off_resistance"]
     for i, var in enumerate(variables):
         V_pick = get_mean(data, var)
         if V_pick == 0.0:
@@ -126,7 +131,7 @@ def calculate_electric_fields():
     pick_off_voltages = np.zeros(4)
     mean_voltage = 0.0
 
-    data = DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample_interval)
+    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
 
     if not data:
         return mean_voltage, pick_off_voltages, electric_fields
@@ -138,8 +143,8 @@ def calculate_electric_fields():
         return mean_voltage, pick_off_voltages, electric_fields
 
     pick_off_voltages, effective_shell_resistances = calculate_effective_shell_resistances(V_set=mean_voltage)
-    R_pick = config_influx["pick_off_resistance"]
-    drift_dist = config_influx["drift_dist"]
+    R_pick = glob.config_influx["pick_off_resistance"]
+    drift_dist = glob.config_influx["drift_dist"]
 
     for i, R_eff in enumerate(effective_shell_resistances):
         E = mean_voltage * (1 - (R_pick / (R_pick + R_eff))) / drift_dist
@@ -147,16 +152,15 @@ def calculate_electric_fields():
 
     return mean_voltage, pick_off_voltages, electric_fields
 
-def dump_SC_data(influxDB_manager, PsqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False):
+def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False):
 
-    global config_influx, config_psql, subsample_interval, influxDB, PsqlDB
 
     config = load_config(config_file)
-    config_influx = config["influxdb"]
-    config_psql = config["psql"]
-    subsample_interval = subsample
-    influxDB = influxDB_manager
-    PsqlDB = PsqlDB_manager
+    glob.config_influx = config["influxdb"]
+    glob.config_psql = config["psql"]
+    glob.subsample_interval = subsample
+    glob.influxDB = influxDB_manager
+    glob.psqlDB = psqlDB_manager
 
     if dump_all_data:
         influx_data = influx_blind_dump()
@@ -166,7 +170,7 @@ def dump_SC_data(influxDB_manager, PsqlDB_manager, config_file, subsample=None, 
     else:
         ground_tag, shorts_num = get_gizmo_ground_tag()
         LAr_tag = get_LAr_level_tag()
-        electron_lifetime = PsqlDB.get_purity_monitor_data(tablename=config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
+        electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
 
         data = {
@@ -200,8 +204,8 @@ def dump_single_influx(influxDB, database, measurement, variables=[], subsample=
     if not variables: variables = influxDB.fetch_measurement_fields(database, measurement)
     dump(DataManager(influxDB.fetch_measurement_data(database=database, measurement=measurement, variables=variables)).format(source="influx", variables=variables, subsample_interval=subsample), filename=influxDB.make_filename(database, measurement))
 
-def dump_single_cryostat(PsqlDB, table_prefix, variable, tagid, subsample=None):
-    dump(DataManager(PsqlDB.get_cryostat_data(table_prefix=table_prefix, variable=variable, tagid=tagid)).format(source="psql", variables=[variable], subsample_interval=subsample), filename=PsqlDB.make_filename(variable))
+def dump_single_cryostat(psqlDB, table_prefix, variable, tagid, subsample=None):
+    dump(DataManager(psqlDB.get_cryostat_data(table_prefix=table_prefix, variable=variable, tagid=tagid)).format(source="psql", variables=[variable], subsample_interval=subsample), filename=psqlDB.make_filename(variable))
 
-def dump_single_prm(PsqlDB, tablename, measurements, variables, subsample=None):
-    dump(DataManager(PsqlDB.get_purity_monitor_data(tablename=tablename, variables=variables)).format(source="psql", variables=measurements, subsample_interval=subsample), filename=PsqlDB.make_filename('_'.join(measurements)))
+def dump_single_prm(psqlDB, tablename, measurements, variables, subsample=None):
+    dump(DataManager(psqlDB.get_purity_monitor_data(tablename=tablename, variables=variables)).format(source="psql", variables=measurements, subsample_interval=subsample), filename=psqlDB.make_filename('_'.join(measurements)))

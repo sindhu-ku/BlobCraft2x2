@@ -1,7 +1,7 @@
 import argparse
 from datetime import datetime
 import yaml
-from ..DB import SQLiteManager
+from ..DB import SQLiteDBManager
 from ..DataManager import dump, load_config
 
 def unix_to_iso(unix_time):
@@ -11,7 +11,7 @@ def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
     query_start = datetime.now()
     config = load_config("config/LRS_parameters.yaml")
-    sqlite = SQLiteManager(run=run, filename=config.get('filename'))
+    sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
 
     output = {}
     subruns = sqlite.get_subruns()

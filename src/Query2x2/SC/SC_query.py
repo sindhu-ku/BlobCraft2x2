@@ -6,35 +6,38 @@ from dateutil import parser as date_parser
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
 
+class SCQueryGlobals:
+    def __init__(self):
+        measurement=''
+        param_config_file = ''
+        param_config=None
+        influxDB=None
+        psqlDB=None
+        run=-1
+        subrun=-1
+        subsample=None
+        start=None
+        end=None
+        config_influx=None
+        config_pqsl=None
 
-measurement=''
-param_config_file = ''
-param_config=None
-influxDB=None
-PsqlDB=None
-run=-1
-subrun=-1
-subsample=None
-start=None
-end=None
-config_influx=None
-config_psql=None
+glob = SCQueryGlobals()
 
 def get_measurement_info():
-    if measurement in config_influx.get('influx_SC_special_dict', {}):
-        return 'influx', config_influx['influx_SC_special_dict'][measurement]
-    elif measurement in config_psql.get('cryostat_tag_dict', {}):
-        table_prefix = config_psql['cryo_table_prefix']
-        variable = measurement
-        tagid = config_psql['cryostat_tag_dict'][measurement]
+    if glob.measurement in glob.config_influx.get('influx_SC_special_dict', {}):
+        return 'influx', glob.config_influx['influx_SC_special_dict'][glob.measurement]
+    elif glob.measurement in glob.config_pqsl.get('cryostat_tag_dict', {}):
+        table_prefix = glob.config_pqsl['cryo_table_prefix']
+        variable = glob.measurement
+        tagid = glob.config_pqsl['cryostat_tag_dict'][glob.measurement]
         return 'psql_cryostat', (table_prefix, variable, tagid)
-    elif measurement in config_psql.get('purity_mon_variables', {}):
-        tablename = config_psql['purity_mon_table']
-        variable = [config_psql['purity_mon_variables'][measurement]]
-        return 'psql_purity_mon', (tablename, measurement, variable)
-    elif measurement == "purity_monitor":
-        tablename = config_psql['purity_mon_table']
-        table = config_psql['purity_mon_variables']
+    elif glob.measurement in glob.config_pqsl.get('purity_mon_variables', {}):
+        tablename = glob.config_pqsl['purity_mon_table']
+        variable = [glob.config_pqsl['purity_mon_variables'][glob.measurement]]
+        return 'psql_purity_mon', (tablename, glob.measurement, variable)
+    elif glob.measurement == "purity_monitor":
+        tablename = glob.config_pqsl['purity_mon_table']
+        table = glob.config_pqsl['purity_mon_variables']
         measurements = list(table.keys())
         variables = list(table.values())
         return 'psql_purity_mon', (tablename, measurements, variables)
@@ -51,107 +54,102 @@ def parse_datetime(date_str, is_start):
             return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
     return dt.astimezone(chicago_tz)
 
-def process_single_instance(measurement):
-    global config_influx, config_psql
+def process_single_instance():
 
-    config_influx = param_config["influxdb"]
-    config_psql = param_config["psql"]
+    glob.config_influx = glob.param_config["influxdb"]
+    glob.config_pqsl = glob.param_config["psql"]
 
-    if measurement == "runsdb":
-        if subrun:
-            output_json_filename = f"SlowControls_run-{run}_subrun-{subrun}_{start.isoformat()}_{end.isoformat()}.json"
+    if glob.measurement == "runsdb":
+        if glob.subrun:
+            output_json_filename = f"SlowControls_run-{glob.run}_subrun-{glob.subrun}_{glob.start.isoformat()}_{glob.end.isoformat()}.json"
         else:
-            output_json_filename = f"SlowControls_run-{run}_{start.isoformat()}_{end.isoformat()}.json"
-        data = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, json_filename=output_json_filename, subsample=subsample, dump_all_data=False)
+            output_json_filename = f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}.json"
+        data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, json_filename=output_json_filename, subsample=glob.subsample, dump_all_data=False)
         dump(data, output_json_filename)
 
-    elif measurement == "all":
-        output_json_filename = f"SlowControls_{start.isoformat()}_{end.isoformat()}.json"
-        data = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
+    elif glob.measurement == "all":
+        output_json_filename = f"SlowControls_{glob.start.isoformat()}_{glob.end.isoformat()}.json"
+        data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
         dump(data, output_json_filename)
 
     else:
         source, info = get_measurement_info()
         if source == 'influx':
             database, measurement, variables = info
-            dump_single_influx(influxDB=influxDB, database=database, measurement=measurement, variables=variables, subsample=subsample)
+            dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=subsample)
         elif source == 'psql_cryostat':
             table_prefix, variable, tagid = info
-            dump_single_cryostat(PsqlDB=PsqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=subsample)
+            dump_single_cryostat(psqlDB=glob.psqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=subsample)
         elif source == 'psql_purity_mon':
             tablename, measurements, variables = info
-            dump_single_prm(PsqlDB=PsqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=subsample)
+            dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=subsample)
         else:
             print(f"Measurement '{measurement}' not found in the configuration.")
 
 def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_interval=None, run_number=None, subrun_number=None, subrun_dict=None):
     query_start = datetime.now()
 
-    global measurement, param_config_file, param_config, influxDB, PsqlDB, run, subrun, subsample, start, end
-
-    measurement=measurement_name
-    run=run_number
-    subrun=subrun_number
-    subsample=subsample_interval
-
-    if measurement=="runsdb" and not subrun_dict and not start_time and not end_time:
+    if measurement_name=="runsdb" and not subrun_dict and not start_time and not end_time:
         raise ValueError("ERROR: please provide start and end times or a subrun_dict!")
 
-    if measurement=="runsdb" and not run:
+    if measurement_name=="runsdb" and not run_number:
         raise ValueError("ERROR: You must provide a run number!")
 
+    glob.measurement=measurement_name
+    glob.run=run_number
+    glob.subrun=subrun_number
+    glob.subsample=subsample_interval
+
     cred_config_file = "config/SC_credentials.yaml"
-    param_config_file = "config/SC_parameters.yaml"
+    glob.param_config_file = "config/SC_parameters.yaml"
 
     cred_config = load_config(cred_config_file)
-    param_config = load_config(param_config_file)
+    glob.param_config = load_config(glob.param_config_file)
 
-    PsqlDB = PsqlDBManager(config=cred_config["psql"])
-    influxDB = InfluxDBManager(config=cred_config["influxdb"])
+    glob.psqlDB = PsqlDBManager(config=cred_config["psql"])
+    glob.influxDB = InfluxDBManager(config=cred_config["influxdb"])
 
     if subrun_dict:
-        if not (measurement == "runsdb" or measurement == "all"): raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsdb' if subrun_dict is used!")
+        if not (glob.measurement == "runsdb" or glob.measurement == "all"): raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsdb' if subrun_dict is used!")
 
         data = {}
-        start=None
-        end=None
         output_json_filename=''
         for subrun, times in subrun_dict.items():
-            print(f"----------------------------------------Fetching Slow Controls data for the time period {start} to {end}, subrun={subrun}----------------------------------------")
             if not start_time: start_str=times['start_time']
             end_str=times['end_time']
 
             start_t, end_t=times['start_time'], times['end_time']
             try:
-                start = parse_datetime(start_t, is_start=True)
-                end = parse_datetime(end_t, is_start=False)
+                glob.start = parse_datetime(start_t, is_start=True)
+                glob.end = parse_datetime(end_t, is_start=False)
             except ValueError as e:
                 print(f"Error parsing date: {e}")
                 return
-            PsqlDB.set_time_range(start, end)
-            influxDB.set_time_range(start, end)
+            print(f"----------------------------------------Fetching Slow Controls data for the time period {glob.start} to {glob.end}, subrun={subrun}----------------------------------------")
+            glob.psqlDB.set_time_range(glob.start, glob.end)
+            glob.influxDB.set_time_range(glob.start, glob.end)
 
-            if measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=False)
-            if measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
+            if glob.measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
+            if glob.measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
 
-        if measurement=="runsdb": output_json_filename = f"SlowControls_summary_run-{run}_{start_str}_{end_str}.json"
-        if measurement=="all":  output_json_filename = f"SlowControls_all-measurements_run-{run}_{start_str}_{end_str}.json"
+        if glob.measurement=="runsdb": output_json_filename = f"SlowControls_summary_run-{glob.run}_{start_str}_{end_str}.json"
+        if glob.measurement=="all":  output_json_filename = f"SlowControls_all-measurements_run-{glob.run}_{start_str}_{end_str}.json"
 
         dump(data, output_json_filename)
     else:
         print(f"----------------------------------------Fetching Slow Controls data for the time period {start_time} to {end_time}----------------------------------------")
         try:
-            start = parse_datetime(start_time, is_start=True)
-            end = parse_datetime(end_time, is_start=False)
+            glob.start = parse_datetime(start_time, is_start=True)
+            glob.end = parse_datetime(end_time, is_start=False)
         except ValueError as e:
             print(f"Error parsing date: {e}")
             return
-        PsqlDB.set_time_range(start, end)
-        influxDB.set_time_range(start, end)
-        process_single_instance(measurement)
+        glob.psqlDB.set_time_range(glob.start, glob.end)
+        glob.influxDB.set_time_range(glob.start, glob.end)
+        process_single_instance()
 
-    influxDB.close_connection()
-    PsqlDB.close_connection()
+    glob.influxDB.close_connection()
+    glob.psqlDB.close_connection()
 
     query_end = datetime.now()
     print("\n")
