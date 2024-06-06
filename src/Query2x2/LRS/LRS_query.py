@@ -4,6 +4,9 @@ import yaml
 from ..DB import SQLiteManager
 from ..DataManager import dump, load_config
 
+def unix_to_iso(unix_time):
+    return datetime.fromtimestamp(unix_time).isoformat()
+
 def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
     query_start = datetime.now()
@@ -34,6 +37,10 @@ def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
 
         if not data:
             continue
+        unix_time_columns = {'start_time_unix', 'end_time_unix', 'first_event_tai', 'last_event_tai'}
+
+        for row in data:
+            row.update({col: unix_to_iso(row[col]) for col in unix_time_columns if col in row})
 
         moas_filename = data[0]["active_moas"]
         if not moas_filename:
