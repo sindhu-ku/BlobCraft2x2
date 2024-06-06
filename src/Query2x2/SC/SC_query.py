@@ -62,7 +62,6 @@ def process_single_instance(measurement):
             output_json_filename = f"SlowControls_run-{run}_subrun-{subrun}_{start.isoformat()}_{end.isoformat()}.json"
         else:
             output_json_filename = f"SlowControls_run-{run}_{start.isoformat()}_{end.isoformat()}.json"
-        print(start, end)
         data = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, json_filename=output_json_filename, subsample=subsample, dump_all_data=False)
         dump(data, output_json_filename)
 
