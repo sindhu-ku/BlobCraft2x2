@@ -94,7 +94,7 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
     subrun=subrun_number
     subsample=subsample_interval
 
-    if not measurement=="runsdb" and not subrun_dict and not start_time and not end_time:
+    if measurement=="runsdb" and not subrun_dict and not start_time and not end_time:
         raise ValueError("ERROR: please provide start and end times or a subrun_dict!")
 
     if measurement=="runsdb" and not run:
@@ -108,32 +108,34 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
 
     PsqlDB = PsqlDBManager(config=cred_config["psql"])
     influxDB = InfluxDBManager(config=cred_config["influxdb"])
+
     if subrun_dict:
-        start_times = []
-        end_times = []
-        subruns = []
-
-        for subrun, times in subrun_dict.items():
-            start_times.append(times['start_time'])
-            end_times.append(times['end_time'])
-            subruns.append(subrun)
-
-        if len(subruns) != len(start_times) != len(end_times):
-            raise ValueError("ERROR: lengths of start, end times and subruns are not equal!")
+        if not (measurement == "runsdb" or measurement == "all"): raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsdb' if subrun_dict is used!")
 
         data = {}
-
-        if measurement=="runsdb": output_json_filename = f"SlowControls_summary_run-{run}_{start_times[0].isoformat()}_{end_times[-1].isoformat()}.json"
-        elif measurement=="all":  output_json_filename = f"SlowControls_all-measurements_run-{run}_{start_times[0].isoformat()}_{end_times[-1].isoformat()}.json"
-        else: raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsb' if subrun_dict is used!")
-
-        for  subrun, start, end in zip(subruns, start_times, end_times):
+        start=None
+        end=None
+        output_json_filename=''
+        for subrun, times in subrun_dict.items():
             print(f"----------------------------------------Fetching Slow Controls data for the time period {start} to {end}, subrun={subrun}----------------------------------------")
+            if not start_time: start_str=times['start_time']
+            end_str=times['end_time']
+
+            start_t, end_t=times['start_time'], times['end_time']
+            try:
+                start = parse_datetime(start_t, is_start=True)
+                end = parse_datetime(end_t, is_start=False)
+            except ValueError as e:
+                print(f"Error parsing date: {e}")
+                return
             PsqlDB.set_time_range(start, end)
             influxDB.set_time_range(start, end)
+
             if measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=False)
-            elif measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
-            else: raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsb' if subrun_dict is used!")
+            if measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=influxDB, PsqlDB_manager=PsqlDB, config_file=param_config_file, subsample=subsample, dump_all_data=True)
+
+        if measurement=="runsdb": output_json_filename = f"SlowControls_summary_run-{run}_{start_str}_{end_str}.json"
+        if measurement=="all":  output_json_filename = f"SlowControls_all-measurements_run-{run}_{start_str}_{end_str}.json"
 
         dump(data, output_json_filename)
     else:

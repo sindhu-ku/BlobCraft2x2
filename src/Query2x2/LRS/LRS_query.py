@@ -55,8 +55,8 @@ def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
         output[f"subrun_{subrun}"]["moas_channels"] = moas_channels_dict
 
     if any(output.values()):
-        if dump_all_data: output_filename = f'LRS_all-measurments_run-{run}_{start_time.isoformat()}_{end_time.isoformat()}.json'
-        else: output_filename = f'LRS_summary_run-{run}_{start_time.isoformat()}_{end_time.isoformat()}.json'
+        if dump_all_data: output_filename = f'LRS_all-measurments_run-{run}_{start_time}_{end_time}.json'
+        else: output_filename = f'LRS_summary_run-{run}_{start_time}_{end_time}.json'
         dump(output, output_filename)
     else:
         print(f"No data found for run number {run} in the LRS database")

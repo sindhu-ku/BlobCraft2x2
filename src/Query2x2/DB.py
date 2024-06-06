@@ -169,8 +169,8 @@ class SQLiteManager:
             subrun_info = dict(zip(subrun_columns, row))
             subrun_number = subrun_info['subrun']
             subrun_times = {
-                'start_time': datetime.fromtimestamp(subrun_info['start_time_unix'], chicago_tz),
-                'end_time': datetime.fromtimestamp(subrun_info['end_time_unix'], chicago_tz)
+                'start_time': datetime.fromtimestamp(subrun_info['start_time_unix'], tz=chicago_tz).isoformat(),
+                'end_time': datetime.fromtimestamp(subrun_info['end_time_unix'], tz=chicago_tz).isoformat()
             }
             subruns[subrun_number] = subrun_times
 
