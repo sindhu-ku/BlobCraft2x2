@@ -33,9 +33,10 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T2
   - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --measurement: Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurments inside SC_parameters/config.yaml (`influx_SC_data_dict`, `cryostat_tag_dict`, `purity_mon_variables`)
-  - --run: Run number for runsdb (required when measurement is runsdb)
 - optional:
   - --subsample: Subsample interval in s like '60S' if you want coarser measurements
+- runsDB specific:
+  - --run: Run number for runsdb (required when measurement is runsdb)
   - --subrun: Subrun number for runsdb
   - --subrun_dict: Dictionary of subruns with start and end times. Required for runsdb if start and end are not given
 
@@ -51,7 +52,7 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-28T2
     - cryostat_pressure
     - LAr_level
 
-  - Purity monitor measurements PSQL DB:
+  - Purity monitor measurements PSQL DB (note simply giving "purity_monitor" will dump all the below variables):
     - electron_lifetime
     - impurities
     - anode_peak
