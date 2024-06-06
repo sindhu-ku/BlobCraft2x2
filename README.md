@@ -7,8 +7,8 @@ Pre-requisites:
 
 Installation:
 ```
-git clone https://github.com/sindhu-ku/2x2_RunsDB.git
-cd 2x2_RunsDB/
+git clone https://github.com/sindhu-ku/BlobCraft2x2.git
+cd BlobCraft2x2/
 ```
 Do a simple pip install or setup a virtual environment:
 ```
@@ -16,8 +16,8 @@ pip3 install .
 ```
 (or)
 ```
-python -m venv query2x2.venv
-source query2x2.venv/bin/activate
+python -m venv BlobCraft2x2.venv
+source BlobCraft2x2.venv/bin/activate
 pip install --upgrade pip setuptools wheel
 ```
 ### Slow/ detector controls
