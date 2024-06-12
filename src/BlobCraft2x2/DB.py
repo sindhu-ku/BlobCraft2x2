@@ -95,7 +95,7 @@ class PsqlDBManager:
                 return result_data
 
     def make_filename(self, measurement_name):
-        return f"{measurement_name}_{self.start.isoformat()}_{self.end.isoformat()}.json"
+        return f"{measurement_name}_{self.start.isoformat()}_{self.end.isoformat()}"
 
 
     def close_connection(self):
@@ -147,7 +147,7 @@ class InfluxDBManager:
         return tag_keys
 
     def make_filename(self, database, measurement):
-        return f'{database}_{measurement}_{self.start.isoformat()}_{self.end.isoformat()}.json'
+        return f'{database}_{measurement}_{self.start.isoformat()}_{self.end.isoformat()}'
 
     def close_connection(self):
         if self.client is not None:
@@ -207,6 +207,56 @@ class SQLiteDBManager:
         if not moas_channels_data:
             raise ValueError(f"ERROR: No MOAS channels data found")
         return [dict(zip(moas_channels_columns, row)) for row in moas_channels_data]
+
+    def extract_schema(self, data):
+        schema = {}
+        for subrun, details in data.items():
+            for key, value in details.items():
+                if isinstance(value, dict):
+                    for subkey, subvalue in value.items():
+                        composite_key = f"{key}_{subkey}"
+                        if composite_key not in schema:
+                            schema[composite_key] = type(subvalue)
+                else:
+                    if key not in schema:
+                        schema[key] = type(value)
+        return schema
+
+    def create_table(self, table_name, schema):
+        columns = []
+        for col, col_type in schema.items():
+            if col_type == int:
+                col_type = "INTEGER"
+            elif col_type == float:
+                col_type = "REAL"
+            else:
+                col_type = "TEXT"
+            columns.append(f"{col} {col_type}")
+        columns_str = ", ".join(columns)
+        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (subrun TEXT PRIMARY KEY, {columns_str})")
+
+    def insert_data(self, table_name, data):
+        for subrun, details in data.items():
+            flat_details = {"subrun": subrun}
+            for key, value in details.items():
+                if isinstance(value, dict):
+                    for subkey, subvalue in value.items():
+                        composite_key = f"{key}_{subkey}"
+                        flat_details[composite_key] = subvalue
+                else:
+                    flat_details[key] = value
+
+            columns = ", ".join(flat_details.keys())
+            placeholders = ", ".join(["?"] * len(flat_details))
+            values = list(flat_details.values())
+
+            self.cursor.execute(f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})", values)
+
+    def dump_data(self, data, table_name):
+        schema = self.extract_schema(data)
+        self.create_table(table_name, schema)
+        self.insert_data(table_name, data)
+        self.conn.commit()
 
     def close_connection(self):
         if self.conn:

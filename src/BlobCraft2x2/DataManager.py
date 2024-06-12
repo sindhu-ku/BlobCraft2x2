@@ -2,8 +2,11 @@
 
 import pandas as pd
 import json
+import csv
 from zoneinfo import ZoneInfo
 import yaml
+from .DB import SQLiteDBManager
+from collections.abc import Mapping
 
 chicago_tz =  ZoneInfo("America/Chicago")
 
@@ -11,12 +14,21 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
 
-def dump(data, filename):
+def dump(data, filename, format='json', tablename='runsdb'):
     if not data:
         return
-    with open(filename, "w") as json_file:
-        json.dump(data, json_file, indent=4)
-    print(f"Dumping data to {filename}")
+
+    if format=='sqlite':
+        sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
+        sqlite_manager.dump_data(data, tablename)
+        sqlite_manager.close_connection()
+        print(f"Dumping to sqlite database file {filename}.db")
+    elif format=='json':
+        with open(f'{filename}.json', "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        print(f"Dumping data to {filename}.json")
+    else:
+        raise ValueError(f'{format} is an unsupported file format type. It can only be json, and sqlite specifically for runsdb')
 
 class DataManager:
     def __init__(self, data):

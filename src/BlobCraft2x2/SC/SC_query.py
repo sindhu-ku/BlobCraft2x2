@@ -61,14 +61,14 @@ def process_single_instance():
 
     if glob.measurement == "runsdb":
         if glob.subrun:
-            output_json_filename = f"SlowControls_run-{glob.run}_subrun-{glob.subrun}_{glob.start.isoformat()}_{glob.end.isoformat()}.json"
+            output_json_filename = f"SlowControls_run-{glob.run}_subrun-{glob.subrun}_{glob.start.isoformat()}_{glob.end.isoformat()}"
         else:
-            output_json_filename = f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}.json"
+            output_json_filename = f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}"
         data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, json_filename=output_json_filename, subsample=glob.subsample, dump_all_data=False)
         dump(data, output_json_filename)
 
     elif glob.measurement == "all":
-        output_json_filename = f"SlowControls_{glob.start.isoformat()}_{glob.end.isoformat()}.json"
+        output_json_filename = f"SlowControls_{glob.start.isoformat()}_{glob.end.isoformat()}"
         data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
         dump(data, output_json_filename)
 
@@ -132,10 +132,9 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
             if glob.measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
             if glob.measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
 
-        if glob.measurement=="runsdb": output_json_filename = f"SlowControls_summary_run-{glob.run}_{start_str}_{end_str}.json"
-        if glob.measurement=="all":  output_json_filename = f"SlowControls_all-measurements_run-{glob.run}_{start_str}_{end_str}.json"
+        if glob.measurement=="runsdb": dump(data, f"SlowControls_summary_run-{glob.run}_{start_str}_{end_str}", format='sqlite', tablename='SlowControls_summary')
+        if glob.measurement=="all":  dump(data, f"SlowControls_all_measurements_run-{glob.run}_{start_str}_{end_str}")
 
-        dump(data, output_json_filename)
     else:
         print(f"----------------------------------------Fetching Slow Controls data for the time period {start_time} to {end_time}----------------------------------------")
         try:

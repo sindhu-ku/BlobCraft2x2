@@ -174,27 +174,27 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
 
         data = {
-            "Gizmo grounding": {
-                "Overall grounding": ground_tag,
-                "Number of shorts": shorts_num
+            "Gizmo_grounding": {
+                "Overall_grounding": ground_tag,
+                "Number_of_shorts": shorts_num
             },
-            "Liquid Argon level": LAr_tag,
-            "Purity monitor": {
-                "Last timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
-                "Electron lifetime (s)": electron_lifetime[1]
+            "Liquid_Argon_level": LAr_tag,
+            "Purity_monitor": {
+                "Last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
+                "Electron_lifetime_s": electron_lifetime[1]
             },
-            "Mean Spellman set voltage (kV)": set_voltage,
-            "Mean pick-off voltages (kV)": {
-                "Module 0": pick_off_voltages[0],
-                "Module 1": pick_off_voltages[1],
-                "Module 2": pick_off_voltages[2],
-                "Module 3": pick_off_voltages[3],
+            "Mean_Spellman_set_voltage_kV": set_voltage,
+            "Mean_pick_off_voltages_kV": {
+                "Module_0": pick_off_voltages[0],
+                "Module_1": pick_off_voltages[1],
+                "Module_2": pick_off_voltages[2],
+                "Module_3": pick_off_voltages[3],
             },
-            "Electric fields (kV/m)": {
-                "Module 0": electric_fields[0],
-                "Module 1": electric_fields[1],
-                "Module 2": electric_fields[2],
-                "Module 3": electric_fields[3],
+            "Electric_fields_kV_per_m": {
+                "Module_0": electric_fields[0],
+                "Module_1": electric_fields[1],
+                "Module_2": electric_fields[2],
+                "Module_3": electric_fields[3],
             }
         }
 
