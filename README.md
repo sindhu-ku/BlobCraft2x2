@@ -1,5 +1,5 @@
 Author: Sindhujha Kumaran (s.kumaran@uci.edu)
-## Query different subsystem databases and save them to JSON files
+## Query different subsystem databases and save them to JSON blobs
 Pre-requisites:
 - Fermilab VPN
 - Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov`
@@ -40,7 +40,7 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:0
   - --subrun: Subrun number for runsdb
   - --subrun_dict: Dictionary of subruns with start and end times. Required for runsdb if start and end are not given
 
-#### Currently supported measurements:
+#### Currently supported individual measurements (Note: option "all" dumps everything independent of below):
   - InfluxDB (more variables can be easily added in config/SC_parameters.yaml):
     - ground_impedance
     - pick_off_voltages
