@@ -4,6 +4,7 @@ Pre-requisites:
 - Fermilab VPN
 - Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov`
 - Get config/SC_credentials.yaml from me (make sure that the port in influxdb credentials is the same one as you tunneled into, eg. 8087 above)
+- A LRS db file in config (example file: `acdaq@acd-daq01:/data/LRS_det_config/lrsdetconfig.db`)
 
 Installation:
 ```
