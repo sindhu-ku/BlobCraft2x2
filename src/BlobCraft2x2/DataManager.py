@@ -65,8 +65,12 @@ class DataManager:
                 if len(microseconds) < 7:
                     microseconds += '0' * (7 - len(microseconds))
                     return split_time[0] + '.' + microseconds + 'Z'
+                else:
+                    return time_str
             else:
-                return time_str[:-1] + '0' * (6 - len(time_str.split('.')[0])) + 'Z'
+                print("iam here")
+                print(time_str[:-1] + '.000000Z')
+                return time_str[:-1] + '.000000Z'
 
         df["time"] = df["time"].apply(format_time)
         df["time"] = pd.to_datetime(df["time"], utc=True)

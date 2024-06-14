@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
@@ -14,6 +15,8 @@ class SCUtilsGlobals:
         subsample_interval = None
         influxDB = None
         psqlDB = None
+        individual = False
+        output_dir = ''
 
 
 glob = SCUtilsGlobals()
@@ -31,8 +34,12 @@ def influx_blind_dump():
             variables = glob.influxDB.fetch_measurement_fields(database, measurement)
             result_data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables))
             formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
-            merged_data[f'{database}_{measurement}'] = formatted_data
-    return merged_data
+            if not glob.individual: merged_data[f'{database}_{measurement}'] = formatted_data
+            else:
+                out_filename = os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement))
+                dump(formatted_data, filename=out_filename)
+    
+    if not glob.individual: return merged_data
 
 def psql_blind_dump():
     merged_data = {}
@@ -40,15 +47,21 @@ def psql_blind_dump():
     varnames = list(purity_mon_dict.keys())
     variables = list(purity_mon_dict.values())
     purity_monitor = DataManager(glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=variables))
-    formatted_data = purity_monitor.format(source="psql", variables=varnames, subsample_interval=glob.subsample_interval)
-    merged_data["purity_monitor"] = formatted_data
+    formatted_data_prm = purity_monitor.format(source="psql", variables=varnames, subsample_interval=glob.subsample_interval)
+    if not glob.individual: merged_data["purity_monitor"] = formatted_data_prm
+    else:
+        out_filename = os.path.join(glob.output_dir,  glob.psqlDB.make_filename("purity_monitor"))
+        dump(formatted_data_prm, filename=out_filename)
 
     cryostat_dict = glob.config_psql.get("cryostat_tag_dict", {})
     for varname, tagid in cryostat_dict.items():
         data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable=varname, tagid=tagid))
-        formatted_data = data.format(source="psql", variables=[varname], subsample_interval=glob.subsample_interval)
-        merged_data[varname] = formatted_data
-    return merged_data
+        formatted_data_cryo = data.format(source="psql", variables=[varname], subsample_interval=glob.subsample_interval)
+        if not glob.individual: merged_data[varname] = formatted_data_cryo
+        else:
+            out_filename = os.path.join(glob.output_dir,  glob.psqlDB.make_filename(varname))
+            dump(formatted_data_cryo, filename=out_filename)
+    if not glob.individual: return merged_data
 
 def get_influx_db_meas_vars(meas_name):
     database, measurement, variables = glob.config_influx.get("influx_SC_special_dict", {}).get(meas_name, [None, None, None])
@@ -152,7 +165,7 @@ def calculate_electric_fields():
 
     return mean_voltage, pick_off_voltages, electric_fields
 
-def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False):
+def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
 
 
     config = load_config(config_file)
@@ -161,12 +174,15 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
     glob.subsample_interval = subsample
     glob.influxDB = influxDB_manager
     glob.psqlDB = psqlDB_manager
+    glob.individual = individual
+    if output_dir: glob.output_dir = output_dir
 
     if dump_all_data:
         influx_data = influx_blind_dump()
         psql_data = psql_blind_dump()
-        merged_data = {**influx_data, **psql_data}
-        return merged_data
+        if not glob.individual:
+            merged_data = {**influx_data, **psql_data}
+            return merged_data
     else:
         ground_tag, shorts_num = get_gizmo_ground_tag()
         LAr_tag = get_LAr_level_tag()
@@ -200,12 +216,15 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
 
         return data
 
-def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None):
+def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None, output_dir=None):
     if not variables: variables = influxDB.fetch_measurement_fields(database, measurement)
-    dump(DataManager(influxDB.fetch_measurement_data(database=database, measurement=measurement, variables=variables)).format(source="influx", variables=variables, subsample_interval=subsample), filename=influxDB.make_filename(database, measurement))
+    out_filename = os.path.join(output_dir, influxDB.make_filename(database, measurement))
+    dump(DataManager(influxDB.fetch_measurement_data(database=database, measurement=measurement, variables=variables)).format(source="influx", variables=variables, subsample_interval=subsample), filename=out_filename)
 
-def dump_single_cryostat(psqlDB, table_prefix, variable, tagid, subsample=None):
-    dump(DataManager(psqlDB.get_cryostat_data(table_prefix=table_prefix, variable=variable, tagid=tagid)).format(source="psql", variables=[variable], subsample_interval=subsample), filename=psqlDB.make_filename(variable))
+def dump_single_cryostat(psqlDB, table_prefix, variable, tagid, subsample=None, output_dir=None):
+    out_filename = os.path.join(output_dir,  psqlDB.make_filename(variable))
+    dump(DataManager(psqlDB.get_cryostat_data(table_prefix=table_prefix, variable=variable, tagid=tagid)).format(source="psql", variables=[variable], subsample_interval=subsample), filename=out_filename)
 
-def dump_single_prm(psqlDB, tablename, measurements, variables, subsample=None):
-    dump(DataManager(psqlDB.get_purity_monitor_data(tablename=tablename, variables=variables)).format(source="psql", variables=measurements, subsample_interval=subsample), filename=psqlDB.make_filename('_'.join(measurements)))
+def dump_single_prm(psqlDB, tablename, measurements, variables, subsample=None, output_dir=None):
+    out_filename = os.path.join(output_dir,  psqlDB.make_filename('_'.join(measurements)))
+    dump(DataManager(psqlDB.get_purity_monitor_data(tablename=tablename, variables=variables)).format(source="psql", variables=measurements, subsample_interval=subsample), filename=out_filename)

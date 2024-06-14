@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 from datetime import datetime, time
 import argparse
 from dateutil import parser as date_parser
@@ -20,6 +21,7 @@ class SCQueryGlobals:
         end=None
         config_influx=None
         config_pqsl=None
+        output_dir=''
 
 glob = SCQueryGlobals()
 
@@ -55,50 +57,53 @@ def parse_datetime(date_str, is_start):
     return dt.astimezone(chicago_tz)
 
 def process_single_instance():
-
     glob.config_influx = glob.param_config["influxdb"]
     glob.config_pqsl = glob.param_config["psql"]
 
     if glob.measurement == "runsdb":
         if glob.subrun:
-            output_json_filename = f"SlowControls_run-{glob.run}_subrun-{glob.subrun}_{glob.start.isoformat()}_{glob.end.isoformat()}"
+            output_json_filename = os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_subrun-{glob.subrun}_{glob.start.isoformat()}_{glob.end.isoformat()}")
         else:
-            output_json_filename = f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}"
+            output_json_filename =os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}")
+
         data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, json_filename=output_json_filename, subsample=glob.subsample, dump_all_data=False)
         dump(data, output_json_filename)
 
     elif glob.measurement == "all":
-        output_json_filename = f"SlowControls_{glob.start.isoformat()}_{glob.end.isoformat()}"
-        data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
-        dump(data, output_json_filename)
+        dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True, individual=True, output_dir=glob.output_dir)
 
     else:
         source, info = get_measurement_info()
         if source == 'influx':
             database, measurement, variables = info
-            dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample)
+            dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample, output_dir=glob.output_dir)
         elif source == 'psql_cryostat':
             table_prefix, variable, tagid = info
-            dump_single_cryostat(psqlDB=glob.psqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=glob.subsample)
+            dump_single_cryostat(psqlDB=glob.psqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=glob.subsample,  output_dir=glob.output_dir)
         elif source == 'psql_purity_mon':
             tablename, measurements, variables = info
-            dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=glob.subsample)
+            dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=glob.subsample,  output_dir=glob.output_dir)
         else:
             print(f"Measurement '{measurement}' not found in the configuration.")
 
-def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_interval=None, run_number=None, subrun_number=None, subrun_dict=None):
+def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_interval=None, run_number=None, subrun_number=None, subrun_dict=None, output_directory=None):
     query_start = datetime.now()
 
-    if measurement_name=="runsdb" and not subrun_dict and not start_time and not end_time:
+    if (measurement_name=="runsdb" or measurement_name=="ucondb")  and not subrun_dict and not start_time and not end_time:
         raise ValueError("ERROR: please provide start and end times or a subrun_dict!")
 
-    if measurement_name=="runsdb" and not run_number:
+    if (measurement_name=="runsdb" or measurement_name=="ucondb")  and not run_number:
         raise ValueError("ERROR: You must provide a run number!")
 
     glob.measurement=measurement_name
     glob.run=run_number
     glob.subrun=subrun_number
     glob.subsample=subsample_interval
+    glob.output_dir=output_directory
+
+    if output_directory:
+        glob.output_dir=output_directory
+        os.makedirs(glob.output_dir, exist_ok=True)
 
     cred_config_file = "config/SC_credentials.yaml"
     glob.param_config_file = "config/SC_parameters.yaml"
@@ -110,7 +115,7 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
     glob.influxDB = InfluxDBManager(config=cred_config["influxdb"])
 
     if subrun_dict:
-        if not (glob.measurement == "runsdb" or glob.measurement == "all"): raise ValueError("Unrecognized measurement value. Only give 'all' or 'runsdb' if subrun_dict is used!")
+        if not (glob.measurement == "runsdb" or glob.measurement == "ucondb"): raise ValueError("Unrecognized measurement value. Only give 'ucondb' or 'runsdb' if subrun_dict is used!")
 
         data = {}
         output_json_filename=''
@@ -130,10 +135,11 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
             glob.influxDB.set_time_range(glob.start, glob.end)
 
             if glob.measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
-            if glob.measurement=="all": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
+            if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
 
-        if glob.measurement=="runsdb": dump(data, f"SlowControls_summary_run-{glob.run}_{start_str}_{end_str}", format='sqlite', tablename='SlowControls_summary')
-        if glob.measurement=="all":  dump(data, f"SlowControls_all_measurements_run-{glob.run}_{start_str}_{end_str}")
+
+        if glob.measurement=="runsdb": dump(data, os.path.join(glob.output_dir, f"SlowControls_summary_run-{glob.run}_{start_str}_{end_str}"), format='sqlite', tablename='SlowControls_summary')
+        if glob.measurement=="ucondb": dump(data, os.path.join(glob.output_dir, f"SlowControls_all_ucondb_measurements_run-{glob.run}_{start_str}_{end_str}"))
 
     else:
         print(f"----------------------------------------Fetching Slow Controls data for the time period {start_time} to {end_time}----------------------------------------")
@@ -162,10 +168,11 @@ def main():
     parser.add_argument('--measurement', type=str, required=True, help="Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurements in the parameters/config.yaml (influx_SC_data_dict, cryostat_tag_dict, purity_mon_variables)")
     parser.add_argument('--run', type=int, default=None, help="Run number for runsdb (required when measurement is runsdb)")
     parser.add_argument('--subsample', type=str, default=None, help="Subsample interval in s like '60S' (optional)")
+    parser.add_argument('--output_dir', type=str, default=None, help="Directory to save the output files")
 
     args = parser.parse_args()
 
-    SC_blob_maker(start_time=args.start, end_time=args.end, measurement_name=args.measurement, subsample_interval=args.subsample, run_number=args.run)
+    SC_blob_maker(start_time=args.start, end_time=args.end, measurement_name=args.measurement, subsample_interval=args.subsample, run_number=args.run, output_directory=args.output_dir)
 
 if __name__ == "__main__":
     main()

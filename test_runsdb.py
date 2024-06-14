@@ -7,4 +7,4 @@ LRS_blob_maker(run=20, dump_all_data=True)   #dumps all tables in LRS DB into a 
 
 SC_blob_maker(measurement_name="runsdb", run_number=20, subrun_dict=subrun_dict) #only dumps summary SC data of LRS subruns into a sqlite db file
 
-SC_blob_maker(measurement_name="all", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subruns into a a json blob
+SC_blob_maker(measurement_name="ucondb", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subruns into a a json blob
