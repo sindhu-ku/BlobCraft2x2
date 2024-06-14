@@ -36,6 +36,7 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:0
   - --measurement: Measurement name to query. Use 'all' if you want all the measurments inside SC_parameters/config.yaml (`influx_SC_DB`, `cryostat_tag_dict`, `purity_mon_variables`)
 - optional:
   - --subsample: Subsample interval in s like '60S' if you want coarser measurements
+  - --output_dir: Directory to save the output files. Default is current directory
 - runsDB specific:
   - --measurement: 'runsdb' for summary and 'ucondb' for dumping all measurements in one json blob
   - --run: Run number for runsdb (required when measurement is runsdb)
