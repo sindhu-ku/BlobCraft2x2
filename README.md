@@ -33,10 +33,11 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:0
 - required arguments for simple query:
   - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
-  - --measurement: Measurement name to query. Use 'runsdb' for runs database and 'all' if you want all the measurments inside SC_parameters/config.yaml (`influx_SC_DB`, `cryostat_tag_dict`, `purity_mon_variables`)
+  - --measurement: Measurement name to query. Use 'all' if you want all the measurments inside SC_parameters/config.yaml (`influx_SC_DB`, `cryostat_tag_dict`, `purity_mon_variables`)
 - optional:
   - --subsample: Subsample interval in s like '60S' if you want coarser measurements
 - runsDB specific:
+  - --measurement: 'runsdb' for summary and 'ucondb' for dumping all measurements in one json blob
   - --run: Run number for runsdb (required when measurement is runsdb)
   - --subrun: Subrun number for runsdb
   - --subrun_dict: Dictionary of subruns with start and end times. Required for runsdb if start and end are not given
