@@ -16,7 +16,7 @@ class SCUtilsGlobals:
         influxDB = None
         psqlDB = None
         individual = False
-        output_dir = ''
+        output_dir = None
 
 
 glob = SCUtilsGlobals()
@@ -166,8 +166,6 @@ def calculate_electric_fields():
     return mean_voltage, pick_off_voltages, electric_fields
 
 def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None, beam_data=None):
-
-
     config = load_config(config_file)
     glob.config_influx = config["influxdb"]
     glob.config_psql = config["psql"]
@@ -176,7 +174,7 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
     glob.psqlDB = psqlDB_manager
     glob.individual = individual
     if output_dir: glob.output_dir = output_dir
-
+    else: glob.output_dir=os.getcwd()
     if dump_all_data:
         influx_data = influx_blind_dump()
         psql_data = psql_blind_dump()
@@ -186,7 +184,7 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
     else:
         ground_tag, shorts_num = get_gizmo_ground_tag()
         LAr_tag = get_LAr_level_tag()
-        electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
+        electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True) #TODO: this should be changed to the updated voltages once available
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
 
         data = {
