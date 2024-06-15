@@ -1,0 +1,3 @@
+url: 'dbdata3vm.fnal.gov:9443/ifbeam/data/data?'
+event: 'e,a9'
+pot_device_name: 'E:TRTGTD'
