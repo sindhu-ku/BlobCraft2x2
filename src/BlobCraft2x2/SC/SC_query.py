@@ -6,6 +6,7 @@ import argparse
 from dateutil import parser as date_parser
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
+from ..Beam.beam_query import get_beam_data
 
 class SCQueryGlobals:
     def __init__(self):
@@ -21,7 +22,7 @@ class SCQueryGlobals:
         end=None
         config_influx=None
         config_pqsl=None
-        output_dir=''
+        output_dir=None
 
 glob = SCQueryGlobals()
 
@@ -104,6 +105,8 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
     if output_directory:
         glob.output_dir=output_directory
         os.makedirs(glob.output_dir, exist_ok=True)
+    else:
+        glob.output_dir=os.getcwd()
 
     cred_config_file = "config/SC_credentials.yaml"
     glob.param_config_file = "config/SC_parameters.yaml"
@@ -134,11 +137,13 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
             glob.psqlDB.set_time_range(glob.start, glob.end)
             glob.influxDB.set_time_range(glob.start, glob.end)
 
-            if glob.measurement=="runsdb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
+            if glob.measurement=="runsdb":
+                beam_data = get_beam_data(start_t, end_t)
+                data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False, beam_data=beam_data)
             if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
 
 
-        if glob.measurement=="runsdb": dump(data, os.path.join(glob.output_dir, f"SlowControls_summary_run-{glob.run}_{start_str}_{end_str}"), format='sqlite', tablename='SlowControls_summary')
+        if glob.measurement=="runsdb": dump(data, os.path.join(glob.output_dir, f"SlowControls_beam_summary_run-{glob.run}_{start_str}_{end_str}"), format='sqlite', tablename='SlowControls_and_beam_summary')
         if glob.measurement=="ucondb": dump(data, os.path.join(glob.output_dir, f"SlowControls_all_ucondb_measurements_run-{glob.run}_{start_str}_{end_str}"))
 
     else:

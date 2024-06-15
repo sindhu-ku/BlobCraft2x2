@@ -38,7 +38,7 @@ def influx_blind_dump():
             else:
                 out_filename = os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement))
                 dump(formatted_data, filename=out_filename)
-    
+
     if not glob.individual: return merged_data
 
 def psql_blind_dump():
@@ -165,7 +165,7 @@ def calculate_electric_fields():
 
     return mean_voltage, pick_off_voltages, electric_fields
 
-def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
+def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None, beam_data=None):
 
 
     config = load_config(config_file)
@@ -213,8 +213,10 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
                 "Module_3": electric_fields[3],
             }
         }
-
-        return data
+        if beam_data:
+             merged_data = {**data, **beam_data}
+             return merged_data
+        else: return data
 
 def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None, output_dir=None):
     if not variables: variables = influxDB.fetch_measurement_fields(database, measurement)
