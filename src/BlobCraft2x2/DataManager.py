@@ -68,8 +68,6 @@ class DataManager:
                 else:
                     return time_str
             else:
-                print("iam here")
-                print(time_str[:-1] + '.000000Z')
                 return time_str[:-1] + '.000000Z'
 
         df["time"] = df["time"].apply(format_time)
