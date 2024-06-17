@@ -22,7 +22,9 @@ def get_subrun_dict():
     lrs_subrun_dict = lrs_sqlite.get_subruns()
     return lrs_subrun_dict
 
+
 def main():
+    query_start = datetime.now()
 
     LRS_summary= LRS_blob_maker(run=run) #get summary LRS info
 
@@ -36,8 +38,13 @@ def main():
 
     start, end = get_first_start_and_last_end(subrun_dict)
 
+    #dump summary into sqlite db
     dump(LRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='LRS_summary')
     dump(SC_beam_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='SC_beam_summary')
+
+    query_end = datetime.now()
+    print("----------------------------------------END OF QUERYING AND BLOB MAKING----------------------------------------")
+    print("Total querying and blob making time in s: ", query_end - query_start)
 
 if __name__ == "__main__":
     main()

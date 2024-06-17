@@ -48,7 +48,7 @@ def LRS_blob_maker(run, dump_all_data=False):
 
         moas_dict = sqlite.get_moas_version_data(moas_filename, moas_columns)
         data[0].update(moas_dict[0])
-        output[f"subrun_{subrun}"] = data[0]
+        output[subrun] = data[0]
 
         if not dump_all_data: continue
 
@@ -58,16 +58,14 @@ def LRS_blob_maker(run, dump_all_data=False):
             raise ValueError(f"ERROR: Multiple config_id values found for MOAS version {moas_version}")
 
         moas_channels_dict = sqlite.get_moas_channels_data(config_ids[0], moas_channels_columns) #Then get the channel information based on the config id for that particular run/subrun
-        output[f"subrun_{subrun}"]["moas_channels"] = moas_channels_dict
+        output[subrun]["moas_channels"] = moas_channels_dict
+
+    sqlite.close_connection()
 
     if not any(output.values()):
         print(f"No data found for run number {run} in the LRS database")
 
     else:
-        sqlite.close_connection()
-        query_end = datetime.now()
-        print("----------------------------------------END OF LRS QUERYING AND BLOB MAKING----------------------------------------")
-        print("Total querying and blob making time in s: ", query_end - query_start)
         if dump_all_data: dump(output, f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
         else: return output
 
