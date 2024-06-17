@@ -144,7 +144,12 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
             if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
 
 
-        if glob.measurement=="runsdb": dump(data, os.path.join(glob.output_dir, f"SlowControls_beam_summary_run-{glob.run}_{start_str}_{end_str}"), format='sqlite', tablename='SlowControls_and_beam_summary')
+        if glob.measurement=="runsdb":
+                query_end = datetime.now()
+                print("\n")
+                print("----------------------------------------END OF SC QUERYING AND BLOB MAKING----------------------------------------")
+                print("Total querying and blob making time in s: ", query_end - query_start)
+                return data
         if glob.measurement=="ucondb": dump(data, os.path.join(glob.output_dir, f"SlowControls_all_ucondb_measurements_run-{glob.run}_{start_str}_{end_str}"))
 
     else:

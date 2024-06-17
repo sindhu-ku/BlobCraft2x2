@@ -7,7 +7,7 @@ from ..DataManager import dump, load_config
 def unix_to_iso(unix_time):
     return datetime.fromtimestamp(unix_time).isoformat()
 
-def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
+def LRS_blob_maker(run, dump_all_data=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
     query_start = datetime.now()
     config = load_config("config/LRS_parameters.yaml")
@@ -60,19 +60,16 @@ def LRS_blob_maker(run, dump_all_data=False, get_subrun_dict=False):
         moas_channels_dict = sqlite.get_moas_channels_data(config_ids[0], moas_channels_columns) #Then get the channel information based on the config id for that particular run/subrun
         output[f"subrun_{subrun}"]["moas_channels"] = moas_channels_dict
 
-    if any(output.values()):
-        if dump_all_data: dump(output, f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
-        else: dump(output, f'LRS_summary_run-{run}_{start_time}_{end_time}', format='sqlite', tablename='LRS_summary')
-    else:
+    if not any(output.values()):
         print(f"No data found for run number {run} in the LRS database")
 
-    sqlite.close_connection()
-
-    query_end = datetime.now()
-    print("----------------------------------------END OF LRS QUERYING AND BLOB MAKING----------------------------------------")
-    print("Total querying and blob making time in s: ", query_end - query_start)
-
-    if get_subrun_dict: return subruns
+    else:
+        sqlite.close_connection()
+        query_end = datetime.now()
+        print("----------------------------------------END OF LRS QUERYING AND BLOB MAKING----------------------------------------")
+        print("Total querying and blob making time in s: ", query_end - query_start)
+        if dump_all_data: dump(output, f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
+        else: return output
 
 
 def main():

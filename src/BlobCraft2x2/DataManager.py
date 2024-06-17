@@ -22,7 +22,7 @@ def dump(data, filename, format='json', tablename='runsdb'):
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
         sqlite_manager.dump_data(data, tablename)
         sqlite_manager.close_connection()
-        print(f"Dumping to sqlite database file {filename}.db")
+        print(f"Dumping table {tablename} to sqlite database file {filename}.db")
     elif format=='json':
         with open(f'{filename}.json', "w") as json_file:
             json.dump(data, json_file, indent=4)
