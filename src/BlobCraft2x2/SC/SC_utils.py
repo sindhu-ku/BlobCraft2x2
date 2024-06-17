@@ -165,7 +165,7 @@ def calculate_electric_fields():
 
     return mean_voltage, pick_off_voltages, electric_fields
 
-def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None, beam_data=None):
+def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
     config = load_config(config_file)
     glob.config_influx = config["influxdb"]
     glob.config_psql = config["psql"]
@@ -211,10 +211,8 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
                 "Module_3": electric_fields[3],
             }
         }
-        if beam_data:
-             merged_data = {**data, **beam_data}
-             return merged_data
-        else: return data
+
+        return data
 
 def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None, output_dir=None):
     if not variables: variables = influxDB.fetch_measurement_fields(database, measurement)

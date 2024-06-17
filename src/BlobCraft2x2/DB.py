@@ -6,6 +6,8 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as alc
 import sqlite3
 from influxdb import InfluxDBClient
+import requests
+import pandas as pd
 
 chicago_tz =  ZoneInfo("America/Chicago")
 
@@ -261,3 +263,60 @@ class SQLiteDBManager:
     def close_connection(self):
         if self.conn:
             self.conn.close()
+
+
+
+class IFBeamManager:
+    def __init__(self, config):
+        self.config = config
+        self.start = None
+        self.end = None
+
+    def set_time_range(self, start, end):
+        self.start = start
+        self.end = end
+
+    def make_url(self, device_name):
+        base_url = f"https://{self.config['url']}v={device_name}&e={self.config['event']}&t0={self.start}&t1={self.end}&f=json"
+        return base_url
+
+    def fetch_data(self, url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f'An error occurred: {e}')
+            return None
+
+    def get_total_pot(self, device_name):
+        url = self.make_url(device_name)
+        print(f"Fetching POT data from {url}")
+
+        data = self.fetch_data(url)
+        if data:
+            value, unit, first_time, last_time = self.get_value(data, sum=True)
+            pot = float(f"{value}{unit}")
+            return pot, first_time, last_time
+        else:
+            print("WARNING: No data found!")
+            return 0.0, self.start, self.end
+
+    def get_value(self, data, sum=False):
+        if 'rows' in data:
+            rows = data['rows']
+        else:
+            raise ValueError('No data rows found in beam data')
+
+        df = pd.DataFrame(rows)
+        if sum: value = df['value'].sum()
+        else: value = df['value'].mean()
+        units = df['units']
+        if not units.nunique() == 1:
+            raise ValueError('WARNING: Units for this value are not consistent across the entire dataset')
+        unit = df.loc[0, 'units']
+
+        first_time = df.loc[0, 'time']
+        last_time = df.loc[len(df) - 1, 'time']
+
+        return value, unit, first_time, last_time
