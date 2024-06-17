@@ -80,19 +80,19 @@ def get_gizmo_ground_tag():
     bad_ground_values = []
 
     if not data:
-        return tag, len(bad_ground_values)
+        return tag, 0.0
 
     for entry in data:
-        if entry["resistance"] < good_ground_impedance - ground_impedance_err or entry["resistance"] > good_ground_impedance + ground_impedance_err:
+        if entry["resistance"] < good_ground_impedance:
             bad_ground_values.append(entry)
 
     bag_ground_percent = len(bad_ground_values) * 100. / len(data)
     if bad_ground_values:
-        print(f"WARNING: Bad grounding detected at {len(bad_ground_values)}({round(bag_ground_percent, 2)}%) instances at these times: {bad_ground_values}")
-    if bag_ground_percent < glob.config_influx["bad_ground_percent_threshold"]:
+        print(f"WARNING: Bad grounding detected at {bad_ground_percent}%) instances at these times: {bad_ground_values}")
+    else:
         tag = "good"
 
-    return tag, len(bad_ground_values)
+    return tag, bad_ground_percent
 
 def get_LAr_level_tag():
     data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable="LAr_level", tagid=glob.config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=glob.subsample_interval)
@@ -102,19 +102,19 @@ def get_LAr_level_tag():
     tag = "bad"
 
     if not data:
-        return tag
+        return tag, 0.0
 
     for entry in data:
-        if entry["LAr_level"] < good_LAr_level - LAr_level_err or entry["LAr_level"] > good_LAr_level + LAr_level_err:
+        if entry["LAr_level"] < good_LAr_level:
             bad_level_values.append(entry)
 
+    bag_LAr_percent = len(bad_level_values) * 100. / len(data)
     if bad_level_values:
-        print(f"WARNING: Bad LAr level detected at {len(bad_level_values)}({round(len(bad_level_values) * 100. / len(data), 2)}%) instances at these times: {bad_level_values}")
-
+        print(f"WARNING: Bad LAr level detected at {bad_LAr_percent}%) instances at these times: {bad_level_values}")
     else:
         tag = "good"
 
-    return tag
+    return tag, bad_LAr_percent
 
 def calculate_effective_shell_resistances(V_set=0.0):
     database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
@@ -182,17 +182,20 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
             merged_data = {**influx_data, **psql_data}
             return merged_data
     else:
-        ground_tag, shorts_num = get_gizmo_ground_tag()
-        LAr_tag = get_LAr_level_tag()
+        ground_tag, bad_ground_per = get_gizmo_ground_tag()
+        LAr_tag, bad_LAr_per = get_LAr_level_tag()
         electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True) #TODO: this should be changed to the updated voltages once available
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
 
         data = {
             "Gizmo_grounding": {
-                "Overall_grounding": ground_tag,
-                "Number_of_shorts": shorts_num
+                "Quality": ground_tag,
+                "Bad_values_percent": bad_ground_per
             },
-            "Liquid_Argon_level": LAr_tag,
+            "Liquid_Argon_level": {
+                "Quality": LAr_tag,
+                "Bad_values_percent": bag_LAr_per
+            },
             "Purity_monitor": {
                 "Last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
                 "Electron_lifetime_s": electron_lifetime[1]
