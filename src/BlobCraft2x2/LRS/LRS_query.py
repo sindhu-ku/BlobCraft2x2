@@ -79,8 +79,8 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         print(f"No data found for run number {run} in the LRS database")
 
     else:
-        if dump_all_data: dump(output, f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
-        else: return output
+        fname = f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}'
+        dump(output, fname)
 
 
 def main():
