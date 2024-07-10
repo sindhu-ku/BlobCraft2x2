@@ -11,7 +11,8 @@ setup(
     entry_points={
         'console_scripts': [
             'SC_query = BlobCraft2x2.SC.SC_query:main',
-            'LRS_query = BlobCraft2x2.LRS.LRS_query:main'
+            'LRS_query = BlobCraft2x2.LRS.LRS_query:main',
+            'Beam_query = BlobCraft2x2.Beam.beam_query:main'
         ],
     },
 

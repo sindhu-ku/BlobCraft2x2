@@ -4,11 +4,24 @@ import pandas as pd
 import json
 import csv
 from zoneinfo import ZoneInfo
+from dateutil import parser as date_parser
+from datetime import datetime, time
 import yaml
 from .DB import SQLiteDBManager
 from collections.abc import Mapping
 
 chicago_tz =  ZoneInfo("America/Chicago")
+
+def parse_datetime(date_str, is_start):
+    dt = date_parser.parse(date_str)
+    if not dt.tzinfo:
+        dt = dt.replace(tzinfo=chicago_tz)
+    if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
+        if is_start:
+            return datetime.combine(dt.date(), time.min, tzinfo=chicago_tz)
+        else:
+            return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
+    return dt.astimezone(chicago_tz)
 
 def load_config(config_file):
     with open(config_file, 'r') as f:
