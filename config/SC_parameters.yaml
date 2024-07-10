@@ -51,6 +51,7 @@ influxdb:
   good_ground_impedance: 150 #threshold below which ground impedance is bad
   drift_dist: 0.3 #meters
   pick_off_resistance: 10.0 #Mohms
+  good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad. 
 
 psql:
   cryo_table_prefix: "sqlt_data_1"
@@ -70,5 +71,3 @@ psql:
     anode_hv: "prm_anode_hv"
     cathode_hv: "prm_cathode_hv"
     anodegrid_hv: "prm_anodegrid_hv"
-
-  good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad. For runsdb

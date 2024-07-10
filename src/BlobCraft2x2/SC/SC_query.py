@@ -28,11 +28,6 @@ glob = SCQueryGlobals()
 def get_measurement_info():
     if glob.measurement in glob.config_influx.get('influx_SC_special_dict', {}):
         return 'influx', glob.config_influx['influx_SC_special_dict'][glob.measurement]
-    elif glob.measurement in glob.config_pqsl.get('cryostat_tag_dict', {}):
-        table_prefix = glob.config_pqsl['cryo_table_prefix']
-        variable = glob.measurement
-        tagid = glob.config_pqsl['cryostat_tag_dict'][glob.measurement]
-        return 'psql_cryostat', (table_prefix, variable, tagid)
     elif glob.measurement in glob.config_pqsl.get('purity_mon_variables', {}):
         tablename = glob.config_pqsl['purity_mon_table']
         variable = [glob.config_pqsl['purity_mon_variables'][glob.measurement]]
