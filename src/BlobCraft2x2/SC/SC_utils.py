@@ -72,7 +72,6 @@ def get_influx_db_meas_vars(meas_name):
 def get_gizmo_ground_tag():
     database, measurement, variables = get_influx_db_meas_vars("ground_impedance")
     good_ground_impedance = glob.config_influx["good_ground_impedance"]
-    ground_impedance_err = glob.config_influx["ground_impedance_err"]
 
     data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
 
@@ -86,7 +85,7 @@ def get_gizmo_ground_tag():
         if entry["resistance"] < good_ground_impedance:
             bad_ground_values.append(entry)
 
-    bag_ground_percent = len(bad_ground_values) * 100. / len(data)
+    bad_ground_percent = len(bad_ground_values) * 100. / len(data)
     if bad_ground_values:
         print(f"WARNING: Bad grounding detected at {bad_ground_percent}%) instances at these times: {bad_ground_values}")
     else:
@@ -97,7 +96,7 @@ def get_gizmo_ground_tag():
 def get_LAr_level_tag():
     data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable="LAr_level", tagid=glob.config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=glob.subsample_interval)
     good_LAr_level = glob.config_psql["good_LAr_level"]
-    LAr_level_err = glob.config_psql["LAr_level_err"]
+
     bad_level_values = []
     tag = "bad"
 
@@ -108,7 +107,7 @@ def get_LAr_level_tag():
         if entry["LAr_level"] < good_LAr_level:
             bad_level_values.append(entry)
 
-    bag_LAr_percent = len(bad_level_values) * 100. / len(data)
+    bad_LAr_percent = len(bad_level_values) * 100. / len(data)
     if bad_level_values:
         print(f"WARNING: Bad LAr level detected at {bad_LAr_percent}%) instances at these times: {bad_level_values}")
     else:
@@ -194,7 +193,7 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
             },
             "Liquid_Argon_level": {
                 "Quality": LAr_tag,
-                "Bad_values_percent": bag_LAr_per
+                "Bad_values_percent": bad_LAr_per
             },
             "Purity_monitor": {
                 "Last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
