@@ -79,3 +79,11 @@ Usage:
 LRS_query --run=<run_number>
 ```
 Parameters that will be saved are in config/LRS_paramters.yaml and can be changed according to needs
+
+### Beam information
+
+Usage:
+```
+Beam_query --start=<start> --end=<end>
+```
+Similar to SC query for times. Right now only saves total POT to the json blob.
