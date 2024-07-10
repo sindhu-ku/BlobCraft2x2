@@ -17,6 +17,8 @@ influxdb:
   #   VME_crate23: *crate_dict
   #   ADC_crate: *crate_dict
   #   pt100: [["temp"],[["value"]]] #RTD temp inside modules
+
+  #all databases inside influx
   influx_SC_db:
     - gizmo
     - module0_mpod0
@@ -28,14 +30,22 @@ influxdb:
     - VME_crate23
     - ADC_crate
     - pt100
+    - cryo_readonly
+    - lrs_monitor
+    - mx2_logs
 
  #special dict for user readability
   influx_SC_special_dict:
     ground_impedance: ["gizmo", "resistance", ["resistance"]]
-    pick_off_voltages: ["HVmonitoring", "Raspi", ["CH0", "CH1", "CH2", "CH3"]]
+    pick_off_voltages: ["HVmonitoring", "Raspi", ["CH1", "CH2", "CH3", "CH4"]]
     set_voltage: ["HVmonitoring", "SPELLMAN_HV", ["Voltage"]]
     oil_temperature: ["HVmonitoring", "Raspi", ["Temperature"]]
     RTD_temperature: ["pt100", "temp", ["value"]]
+    cryostat_pressure: ["cryo_readonly", "PT-1069A", ["magnitude"]]
+    LAr_level_mm: ["cryo_readonly", "LT-1007A", ["magnitude"]]
+    O2_ppb: ["cryo_readonly", "AE-1015A", ["magnitude"]]
+
+  #Check https://github.com/DUNE/2x2_Slow_Controls/blob/main/Cryogenics/dictionary.json for other cryo measurements
 
  #runsdb stuff
   good_ground_impedance: 150 #threshold below which ground impedance is bad
