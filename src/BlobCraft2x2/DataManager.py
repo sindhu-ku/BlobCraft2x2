@@ -23,6 +23,9 @@ def parse_datetime(date_str, is_start):
             return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
     return dt.astimezone(chicago_tz)
 
+def unix_to_iso(unix_time):
+    return datetime.fromtimestamp(unix_time, tz=chicago_tz).isoformat()
+
 def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)

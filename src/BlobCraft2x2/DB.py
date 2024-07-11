@@ -177,17 +177,17 @@ class SQLiteDBManager:
         column_names = [info[1] for info in columns_info]  # The second element in each tuple is the column name
         return column_names
 
-    def get_subruns(self):
-        subrun_columns = ['subrun', 'start_time_unix', 'end_time_unix']
-        subruns_data = self.query_data(table_name='lrs_runs_data', conditions=[f"morcs_run_nr=={self.run}"], columns=subrun_columns)
+    def get_subruns(self, table, start, end, subrun, condition):
+        subrun_columns = [subrun, start, end]
+        subruns_data = self.query_data(table_name=table, conditions=[f"{condition}={self.run}"], columns=subrun_columns)
 
         subruns = {}
         for row in subruns_data:
             subrun_info = dict(zip(subrun_columns, row))
-            subrun_number = subrun_info['subrun']
+            subrun_number = subrun_info[subrun] % 10000
             subrun_times = {
-                'start_time': datetime.fromtimestamp(subrun_info['start_time_unix'], tz=chicago_tz).isoformat(),
-                'end_time': datetime.fromtimestamp(subrun_info['end_time_unix'], tz=chicago_tz).isoformat()
+                'start_time': datetime.fromtimestamp(subrun_info[start], tz=chicago_tz).isoformat(),
+                'end_time': datetime.fromtimestamp(subrun_info[end], tz=chicago_tz).isoformat()
             }
             subruns[subrun_number] = subrun_times
 

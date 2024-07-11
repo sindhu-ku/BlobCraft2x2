@@ -1,20 +1,15 @@
 import argparse
-from datetime import datetime
 import yaml
 from ..DB import SQLiteDBManager
-from ..DataManager import dump, load_config
-
-def unix_to_iso(unix_time):
-    return datetime.fromtimestamp(unix_time).isoformat()
+from ..DataManager import dump, load_config, unix_to_iso
 
 def LRS_blob_maker(run, dump_all_data=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
-    query_start = datetime.now()
     config = load_config("config/LRS_parameters.yaml")
     sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
 
     output = {}
-    subruns = sqlite.get_subruns()
+    subruns = sqlite.get_subruns(table='lrs_runs_data', start='start_time_unix', end='end_time_unix', subrun='subrun', condition='morcs_run_nr')
 
     start_time = None
     end_time = None
@@ -71,7 +66,7 @@ def LRS_blob_maker(run, dump_all_data=False):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Query SQLite database and dump data to JSON file.")
+    parser = argparse.ArgumentParser(description="Query LRS SQLite database and dump data to JSON file.")
     parser.add_argument("--run", type=int, required=True, help="Run number")
     args = parser.parse_args()
 
@@ -80,7 +75,7 @@ def main():
     if not run:
         raise ValueError("run number is a required argument")
 
-    output = LRS_blob_maker(run)
+    LRS_blob_maker(run, dump_all_data=True)
 
 
 if __name__ == "__main__":
