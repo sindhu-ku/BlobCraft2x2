@@ -289,6 +289,17 @@ class IFBeamManager:
             print(f'An error occurred: {e}')
             return None
 
+    def get_pot(self, device_name):
+        url = self.make_url(device_name)
+        print(f"Fetching POT data from {url}")
+
+        data = self.fetch_data(url)
+        if data:
+            return self.extract_time_series(data, combine=True)
+        else:
+            print("WARNING: No data found!")
+            return {}
+
     def get_total_pot(self, device_name):
         url = self.make_url(device_name)
         print(f"Fetching POT data from {url}")
@@ -309,6 +320,7 @@ class IFBeamManager:
             raise ValueError('No data rows found in beam data')
 
         df = pd.DataFrame(rows)
+        if df.empty: return 0.0, 'E0', 0.0, 0.0
         if sum: value = df['value'].sum()
         else: value = df['value'].mean()
         units = df['units']
@@ -320,3 +332,21 @@ class IFBeamManager:
         last_time = df.loc[len(df) - 1, 'time']
 
         return value, unit, first_time, last_time
+
+    def extract_time_series(self, data, combine=False):
+        if 'rows' in data:
+            rows = data['rows']
+        else:
+            raise ValueError('No data rows found in beam data')
+
+        df = pd.DataFrame(rows)
+        if df.empty:
+            return []
+
+        if combine:
+            df['value'] = df.apply(lambda row: f"{row['value']}{row['units']}", axis=1)
+            time_series = df[['time', 'value']].to_dict(orient='records')
+        else:
+            time_series = df[['time', 'value', 'units']].to_dict(orient='records')
+
+        return time_series

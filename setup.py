@@ -6,13 +6,14 @@ setup(
     description='Query DUNE 2x2 databases (slow controls, light readout system) and dump into JSON blobs ',
     author='Sindhujha Kumaran',
     author_email='s.kumaran@uci.edu',
-    packages = find_packages(),
+    packages = find_packages(where='src'),
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
             'SC_query = BlobCraft2x2.SC.SC_query:main',
             'LRS_query = BlobCraft2x2.LRS.LRS_query:main',
-            'Mx2_query = BlobCraft2x2.Mx2.Mx2_query:main'
+            'Mx2_query = BlobCraft2x2.Mx2.Mx2_query:main',
+            'Beam_query = BlobCraft2x2.Beam.beam_query:main'
         ],
     },
 

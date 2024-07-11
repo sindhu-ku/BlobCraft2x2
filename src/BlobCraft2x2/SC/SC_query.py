@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import os
-from datetime import datetime, time
 import argparse
-from dateutil import parser as date_parser
+from ..DataManager import parse_datetime
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
 from ..Beam.beam_query import get_beam_summary
@@ -29,11 +28,6 @@ glob = SCQueryGlobals()
 def get_measurement_info():
     if glob.measurement in glob.config_influx.get('influx_SC_special_dict', {}):
         return 'influx', glob.config_influx['influx_SC_special_dict'][glob.measurement]
-    elif glob.measurement in glob.config_pqsl.get('cryostat_tag_dict', {}):
-        table_prefix = glob.config_pqsl['cryo_table_prefix']
-        variable = glob.measurement
-        tagid = glob.config_pqsl['cryostat_tag_dict'][glob.measurement]
-        return 'psql_cryostat', (table_prefix, variable, tagid)
     elif glob.measurement in glob.config_pqsl.get('purity_mon_variables', {}):
         tablename = glob.config_pqsl['purity_mon_table']
         variable = [glob.config_pqsl['purity_mon_variables'][glob.measurement]]
@@ -45,17 +39,6 @@ def get_measurement_info():
         variables = list(table.values())
         return 'psql_purity_mon', (tablename, measurements, variables)
     raise ValueError(f"Configuration does not support fetching {measurement}. Check influx_SC_special_dict, cryostat_tag_dict, purity_mon_variables in config/parameters.yaml to make sure your measurement is present there")
-
-def parse_datetime(date_str, is_start):
-    dt = date_parser.parse(date_str)
-    if not dt.tzinfo:
-        dt = dt.replace(tzinfo=chicago_tz)
-    if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
-        if is_start:
-            return datetime.combine(dt.date(), time.min, tzinfo=chicago_tz)
-        else:
-            return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
-    return dt.astimezone(chicago_tz)
 
 def process_single_instance():
     glob.config_influx = glob.param_config["influxdb"]

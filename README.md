@@ -25,10 +25,10 @@ pip install --upgrade pip setuptools wheel
 
 Usage:
 ```
-SC_query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level"
+SC_query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level_mm"
 ```
 
-This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:00-28T23:59:59.999999-05:00.json`
+This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-05:00-28T23:59:59.999999-05:00.json`
 
 - required arguments for simple query:
   - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
@@ -50,10 +50,9 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:0
     - set_voltage
     - oil_temperature
     - RTD_temperature
-
-  - Cryo PSQL DB (more variables can be added in config/SC_parameters.yaml once you have the tagid for the measurement):
     - cryostat_pressure
-    - LAr_level
+    - LAr_level_mm
+    - O2_ppb
 
   - Purity monitor measurements PSQL DB (note simply giving "purity_monitor" will dump all the below variables):
     - electron_lifetime
@@ -68,8 +67,11 @@ This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:0
 
 #### Adding custom measurements in config/SC_parameters.yaml
 
-- For influxDB measurements, add to `influx_SC_special_dict`. For example, `ground_impedance: ["gizmo", "resistance", ["resistance"]]`, here `ground_impedance` is the user-defined measurement name. Everything else is Slow Controls database-specific. `gizmo` is the database name, `resistance` is the measurement name, `resistance` is one of the variable names. You can also get multiple variables in the same measurement. Example, additionally `phase` in this case: `ground_impedance_phase: ["gizmo", "resistance", ["resistance", "phase"]]` or you can leave the variables field empty like this if you want all fields from the measurement:`ground_impedance_phase: ["gizmo", "resistance", []]`. Also see `influx_SC_data_dict` for more comprehensive measurements.
-- For cryostat data, first obtain the tagid. Then edit `cryostat_tag_dict`. In this example, `cryostat_pressure: "34"`, the former is user-defined and the latter is the cryostat database-specific tagid
+- For influxDB measurements, add to `influx_SC_special_dict`:
+  - For example, `ground_impedance: ["gizmo", "resistance", ["resistance"]]`, here `ground_impedance` is the user-defined measurement name. Everything else is Slow Controls database-specific. `gizmo` is the database name, `resistance` is the measurement name, `resistance` is one of the variable names.
+  - You can also get multiple variables in the same measurement. Example, additionally `phase` in this case: `ground_impedance_phase: ["gizmo", "resistance", ["resistance", "phase"]]`.
+  - Or you can leave the variables field empty like this if you want all fields from the measurement:`ground_impedance_phase: ["gizmo", "resistance", []]`.
+  - Also see `influx_SC_data_dict` for more comprehensive measurements.
 - All the purity monitor variables are already available in the config
 
 ### Light readout system
@@ -79,3 +81,11 @@ Usage:
 LRS_query --run=<run_number>
 ```
 Parameters that will be saved are in config/LRS_paramters.yaml and can be changed according to needs
+
+### Beam information
+
+Usage:
+```
+Beam_query --start=<start> --end=<end> --measurement="Total POT"
+```
+Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
