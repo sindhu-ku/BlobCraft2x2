@@ -86,6 +86,6 @@ Parameters that will be saved are in config/LRS_paramters.yaml and can be change
 
 Usage:
 ```
-Beam_query --start=<start> --end=<end>
+Beam_query --start=<start> --end=<end> --measurement="Total POT"
 ```
-Similar to SC query for times. Right now only saves total POT to the json blob.
+Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
