@@ -295,7 +295,7 @@ class IFBeamManager:
 
         data = self.fetch_data(url)
         if data:
-            return self.extract_time_series(data)
+            return self.extract_time_series(data, combine=True)
         else:
             print("WARNING: No data found!")
             return {}
@@ -333,7 +333,7 @@ class IFBeamManager:
 
         return value, unit, first_time, last_time
 
-    def extract_time_series(self, data):
+    def extract_time_series(self, data, combine=False):
         if 'rows' in data:
             rows = data['rows']
         else:
@@ -343,5 +343,10 @@ class IFBeamManager:
         if df.empty:
             return []
 
-        time_series = df[['time', 'value', 'units']].to_dict(orient='records')
+        if combine:
+            df['value'] = df.apply(lambda row: f"{row['value']}{row['units']}", axis=1)
+            time_series = df[['time', 'value']].to_dict(orient='records')
+        else:
+            time_series = df[['time', 'value', 'units']].to_dict(orient='records')
+
         return time_series
