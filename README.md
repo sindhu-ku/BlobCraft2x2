@@ -25,10 +25,10 @@ pip install --upgrade pip setuptools wheel
 
 Usage:
 ```
-SC_query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level"
+SC_query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level_mm"
 ```
 
-This should produce a file of format `LAr_level_2024-05-27T00:00:00_2024-05-05:00-28T23:59:59.999999-05:00.json`
+This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-05:00-28T23:59:59.999999-05:00.json`
 
 - required arguments for simple query:
   - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
