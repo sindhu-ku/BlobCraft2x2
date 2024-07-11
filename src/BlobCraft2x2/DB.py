@@ -309,6 +309,7 @@ class IFBeamManager:
             raise ValueError('No data rows found in beam data')
 
         df = pd.DataFrame(rows)
+        if df.empty: return 0.0, 'E0', 0.0, 0.0
         if sum: value = df['value'].sum()
         else: value = df['value'].mean()
         units = df['units']

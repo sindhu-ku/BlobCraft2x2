@@ -93,7 +93,11 @@ def get_tag(measurement_name, field_name, threshold):
     return tag, bad_percent
     #With psql:
     # data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable="LAr_level", tagid=glob.config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=glob.subsample_interval)
-
+def get_last_O2():
+    database, measurement, variables = get_influx_db_meas_vars("O2_ppb")
+    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    if data: return data[-1]
+    else: return {'time': datetime.now(), 'magnitude': '0.0'}
 
 def calculate_effective_shell_resistances(V_set=0.0):
     database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
@@ -163,35 +167,40 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
     else:
         ground_tag, bad_ground_per = get_tag("ground_impedance", "resistance", glob.config_influx["good_ground_impedance"])
         LAr_tag, bad_LAr_per = get_tag("LAr_level_mm", "magnitude", glob.config_influx["good_LAr_level"])
-        electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
+        O2_meas = get_last_O2()
+        #electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
         #TODO: this should be changed to the updated voltages once available
         set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
 
         data = {
             "Gizmo_grounding": {
-                "Quality": ground_tag,
-                "Bad_values_percent": bad_ground_per
+                "quality": ground_tag,
+                "bad_values_percent": bad_ground_per
             },
             "Liquid_Argon_level": {
-                "Quality": LAr_tag,
-                "Bad_values_percent": bad_LAr_per
+                "quality": LAr_tag,
+                "bad_values_percent": bad_LAr_per
             },
-            "Purity_monitor": {
-                "Last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
-                "Electron_lifetime_s": electron_lifetime[1]
+            # "Purity_monitor": {
+            #     "Last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
+            #     "Electron_lifetime_s": electron_lifetime[1]
+            # },
+            "O2_ppb": {
+                "last_timestamp": O2_meas['time'],
+                "value": O2_meas['magnitude']
             },
             "Mean_Spellman_set_voltage_kV": set_voltage,
             "Mean_pick_off_voltages_kV": {
-                "Module_0": pick_off_voltages[0],
-                "Module_1": pick_off_voltages[1],
-                "Module_2": pick_off_voltages[2],
-                "Module_3": pick_off_voltages[3],
+                "Module0": pick_off_voltages[0],
+                "Module1": pick_off_voltages[1],
+                "Module2": pick_off_voltages[2],
+                "Module3": pick_off_voltages[3],
             },
             "Electric_fields_kV_per_m": {
-                "Module_0": electric_fields[0],
-                "Module_1": electric_fields[1],
-                "Module_2": electric_fields[2],
-                "Module_3": electric_fields[3],
+                "Module0": electric_fields[0],
+                "Module1": electric_fields[1],
+                "Module2": electric_fields[2],
+                "Module3": electric_fields[3],
             }
         }
 

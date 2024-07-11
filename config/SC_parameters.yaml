@@ -42,7 +42,7 @@ influxdb:
     oil_temperature: ["HVmonitoring", "Raspi", ["Temperature"]]
     RTD_temperature: ["pt100", "temp", ["value"]]
     cryostat_pressure: ["cryo_readonly", "PT-1069A", ["magnitude"]]
-    LAr_level_mm: ["cryo_readonly", "LT-1007A", ["magnitude"]]
+    LAr_level_mm: ["cryo_readonly", "LT-1007A-RPi", ["magnitude"]]
     O2_ppb: ["cryo_readonly", "AE-1015A", ["magnitude"]]
 
   #Check https://github.com/DUNE/2x2_Slow_Controls/blob/main/Cryogenics/dictionary.json for other cryo measurements
@@ -51,7 +51,7 @@ influxdb:
   good_ground_impedance: 150 #threshold below which ground impedance is bad
   drift_dist: 0.3 #meters
   pick_off_resistance: 10.0 #Mohms
-  good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad. 
+  good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad.
 
 psql:
   cryo_table_prefix: "sqlt_data_1"
