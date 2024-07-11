@@ -67,7 +67,11 @@ This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-0
 
 #### Adding custom measurements in config/SC_parameters.yaml
 
-- For influxDB measurements, add to `influx_SC_special_dict`. For example, `ground_impedance: ["gizmo", "resistance", ["resistance"]]`, here `ground_impedance` is the user-defined measurement name. Everything else is Slow Controls database-specific. `gizmo` is the database name, `resistance` is the measurement name, `resistance` is one of the variable names. You can also get multiple variables in the same measurement. Example, additionally `phase` in this case: `ground_impedance_phase: ["gizmo", "resistance", ["resistance", "phase"]]` or you can leave the variables field empty like this if you want all fields from the measurement:`ground_impedance_phase: ["gizmo", "resistance", []]`. Also see `influx_SC_data_dict` for more comprehensive measurements.
+- For influxDB measurements, add to `influx_SC_special_dict`:
+  - For example, `ground_impedance: ["gizmo", "resistance", ["resistance"]]`, here `ground_impedance` is the user-defined measurement name. Everything else is Slow Controls database-specific. `gizmo` is the database name, `resistance` is the measurement name, `resistance` is one of the variable names.
+  - You can also get multiple variables in the same measurement. Example, additionally `phase` in this case: `ground_impedance_phase: ["gizmo", "resistance", ["resistance", "phase"]]`.
+  - Or you can leave the variables field empty like this if you want all fields from the measurement:`ground_impedance_phase: ["gizmo", "resistance", []]`.
+  - Also see `influx_SC_data_dict` for more comprehensive measurements.
 - All the purity monitor variables are already available in the config
 
 ### Light readout system
