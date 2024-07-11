@@ -6,7 +6,7 @@ setup(
     description='Query DUNE 2x2 databases (slow controls, light readout system) and dump into JSON blobs ',
     author='Sindhujha Kumaran',
     author_email='s.kumaran@uci.edu',
-    packages = find_packages(),
+    packages = find_packages(where='src'),
     package_dir={'': 'src'},
     entry_points={
         'console_scripts': [
