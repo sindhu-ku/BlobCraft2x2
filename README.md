@@ -4,7 +4,7 @@ Pre-requisites:
 - Fermilab VPN
 - Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov`
 - Get config/SC_credentials.yaml from me (make sure that the port in influxdb credentials is the same one as you tunneled into, eg. 8087 above)
-- A LRS db file in config/LRS_parameters.yaml
+- A LRS db file in config/LRS_parameters.yaml and a Mx2 db file in config/Mx2_parameters.yaml
 
 Installation:
 ```
@@ -74,6 +74,14 @@ This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-0
   - Also see `influx_SC_data_dict` for more comprehensive measurements.
 - All the purity monitor variables are already available in the config
 
+### Beam information
+
+Usage:
+```
+Beam_query --start=<start> --end=<end> --measurement="Total POT"
+```
+Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
+
 ### Light readout system
 
 Usage:
@@ -82,10 +90,10 @@ LRS_query --run=<run_number>
 ```
 Parameters that will be saved are in config/LRS_paramters.yaml and can be changed according to needs
 
-### Beam information
+### Mx2 readout system
 
 Usage:
 ```
-Beam_query --start=<start> --end=<end> --measurement="Total POT"
+Mx2_query --run=<run_number>
 ```
-Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
+All meta information in the db file is saved
