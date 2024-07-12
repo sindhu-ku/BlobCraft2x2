@@ -48,20 +48,12 @@ def psql_blind_dump():
     variables = list(purity_mon_dict.values())
     purity_monitor = DataManager(glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=variables))
     formatted_data_prm = purity_monitor.format(source="psql", variables=varnames, subsample_interval=glob.subsample_interval)
-    if not glob.individual: merged_data["purity_monitor"] = formatted_data_prm
+    if not glob.individual:
+        merged_data["purity_monitor"] = formatted_data_prm
+        return merged_data
     else:
         out_filename = os.path.join(glob.output_dir,  glob.psqlDB.make_filename("purity_monitor"))
         dump(formatted_data_prm, filename=out_filename)
-
-    cryostat_dict = glob.config_psql.get("cryostat_tag_dict", {})
-    for varname, tagid in cryostat_dict.items():
-        data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable=varname, tagid=tagid))
-        formatted_data_cryo = data.format(source="psql", variables=[varname], subsample_interval=glob.subsample_interval)
-        if not glob.individual: merged_data[varname] = formatted_data_cryo
-        else:
-            out_filename = os.path.join(glob.output_dir,  glob.psqlDB.make_filename(varname))
-            dump(formatted_data_cryo, filename=out_filename)
-    if not glob.individual: return merged_data
 
 def get_influx_db_meas_vars(meas_name):
     database, measurement, variables = glob.config_influx.get("influx_SC_special_dict", {}).get(meas_name, [None, None, None])

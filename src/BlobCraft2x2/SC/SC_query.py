@@ -61,9 +61,6 @@ def process_single_instance():
         if source == 'influx':
             database, measurement, variables = info
             dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample, output_dir=glob.output_dir)
-        elif source == 'psql_cryostat':
-            table_prefix, variable, tagid = info
-            dump_single_cryostat(psqlDB=glob.psqlDB, table_prefix=table_prefix, variable=variable, tagid=tagid, subsample=glob.subsample,  output_dir=glob.output_dir)
         elif source == 'psql_purity_mon':
             tablename, measurements, variables = info
             dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=glob.subsample,  output_dir=glob.output_dir)
