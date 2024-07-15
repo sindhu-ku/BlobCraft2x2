@@ -307,7 +307,8 @@ class IFBeamManager:
         data = self.fetch_data(url)
         if data:
             value, unit, first_time, last_time = self.get_value(data, sum=True)
-            pot = float(f"{value}{unit}")
+            if value == 0.0 and unit == 'E0': pot = "no data"
+            else: pot = float(f"{value}{unit}")
             return pot, first_time, last_time
         else:
             print("WARNING: No data found!")
