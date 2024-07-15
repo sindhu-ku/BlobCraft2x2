@@ -48,9 +48,8 @@ influxdb:
   #Check https://github.com/DUNE/2x2_Slow_Controls/blob/main/Cryogenics/dictionary.json for other cryo measurements
 
  #runsdb stuff
-  good_ground_impedance: 150 #threshold below which ground impedance is bad
-  drift_dist: 0.3 #meters
-  pick_off_resistance: 10.0 #Mohms
+  good_ground_impedance: 150 #ohms #threshold below which ground impedance is bad
+  drift_dist: 30.2 #centimeters
   good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad.
 
 psql:

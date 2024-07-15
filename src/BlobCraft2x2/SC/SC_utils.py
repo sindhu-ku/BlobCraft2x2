@@ -91,54 +91,19 @@ def get_last_O2():
     if data: return data[-1]
     else: return {'time': datetime.now(), 'magnitude': '0.0'}
 
-def calculate_effective_shell_resistances(V_set=0.0):
-    database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
-    effective_shell_resistances = np.zeros(4)
-    pick_off_voltages = np.zeros(4)
-
-    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
-
-    if not data:
-        return pick_off_voltages, effective_shell_resistances
-
-    R_pick = glob.config_influx["pick_off_resistance"]
-    for i, var in enumerate(variables):
-        V_pick = get_mean(data, var)
-        if V_pick == 0.0:
-            print(f"WARNING: The pick-off voltage for {var} is 0.0!")
-            continue
-        pick_off_voltages[i] = V_pick
-        R_eff = R_pick * ((V_set / V_pick) - 1)
-        effective_shell_resistances[i] = R_eff
-
-    return pick_off_voltages, effective_shell_resistances
-
-def calculate_electric_fields():
+def get_spellman_hv():
     database, measurement, variables = get_influx_db_meas_vars("set_voltage")
-    electric_fields = np.zeros(4)
-    pick_off_voltages = np.zeros(4)
-    mean_voltage = 0.0
-
     data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    mean = get_mean(data, variables[0])
+    return mean
 
-    if not data:
-        return mean_voltage, pick_off_voltages, electric_fields
-
-    mean_voltage = get_mean(data, variables[0])
-
-    if mean_voltage == 0.0:
-        print("WARNING: The set voltage from Spellman HV is 0.0!")
-        return mean_voltage, pick_off_voltages, electric_fields
-
-    pick_off_voltages, effective_shell_resistances = calculate_effective_shell_resistances(V_set=mean_voltage)
-    R_pick = glob.config_influx["pick_off_resistance"]
-    drift_dist = glob.config_influx["drift_dist"]
-
-    for i, R_eff in enumerate(effective_shell_resistances):
-        E = mean_voltage * (1 - (R_pick / (R_pick + R_eff))) / drift_dist
-        electric_fields[i] = E
-
-    return mean_voltage, pick_off_voltages, electric_fields
+def get_mod_voltages():
+    database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
+    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    mod_voltages = np.zeros(4)
+    for i, var in enumerate(variables):
+        mod_voltages[i] = get_mean(data, var)
+    return mod_voltages
 
 def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
     config = load_config(config_file)
@@ -161,8 +126,9 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
         LAr_tag, bad_LAr_per = get_tag("LAr_level_mm", "magnitude", glob.config_influx["good_LAr_level"])
         O2_meas = get_last_O2()
         #electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
-        #TODO: this should be changed to the updated voltages once available
-        set_voltage, pick_off_voltages, electric_fields = calculate_electric_fields()
+        set_voltage = get_spellman_hv()
+        mod_voltages = get_mod_voltages()
+        electric_fields = mod_voltages/(1e3*glob.config_influx["drift_dist"])
 
         data = {
             "Gizmo_grounding": {
@@ -182,17 +148,17 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
                 "value": O2_meas['magnitude']
             },
             "Mean_Spellman_set_voltage_kV": set_voltage,
-            "Mean_pick_off_voltages_kV": {
-                "Module0": pick_off_voltages[0],
-                "Module1": pick_off_voltages[1],
-                "Module2": pick_off_voltages[2],
-                "Module3": pick_off_voltages[3],
+            "Mean_module_voltages_kV": {
+                "Module0": mod_voltages[0],
+                "Module1": mod_voltages[1],
+                "Module2": mod_voltages[2],
+                "Module3": mod_voltages[3]
             },
-            "Electric_fields_kV_per_m": {
+            "Electric_fields_V_per_cm": {
                 "Module0": electric_fields[0],
                 "Module1": electric_fields[1],
                 "Module2": electric_fields[2],
-                "Module3": electric_fields[3],
+                "Module3": electric_fields[3]
             }
         }
 
