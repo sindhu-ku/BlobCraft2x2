@@ -311,7 +311,7 @@ class IFBeamManager:
             return pot, first_time, last_time
         else:
             print("WARNING: No data found!")
-            return 0.0, self.start, self.end
+            return "no data", self.start, self.end
 
     def get_value(self, data, sum=False):
         if 'rows' in data:

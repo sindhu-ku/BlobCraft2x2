@@ -70,7 +70,7 @@ def get_tag(measurement_name, field_name, threshold):
     bad_values = []
 
     if not data:
-        return tag, 0.0
+        return "no data", 0.0
 
     for entry in data:
         if entry[field_name] < threshold:
