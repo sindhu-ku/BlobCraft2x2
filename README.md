@@ -2,7 +2,7 @@ Author: Sindhujha Kumaran (s.kumaran@uci.edu)
 ## Query different subsystem databases and save them to JSON blobs
 Pre-requisites:
 - Fermilab VPN
-- Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov`
+- Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov` (make sure you have an account on acdcs)
 - Get config/SC_credentials.yaml from me (make sure that the port in influxdb credentials is the same one as you tunneled into, eg. 8087 above)
 - A LRS db file in config/LRS_parameters.yaml and a Mx2 db file in config/Mx2_parameters.yaml
 
