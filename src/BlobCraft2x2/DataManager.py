@@ -33,8 +33,34 @@ def load_config(config_file):
 def dump(data, filename, format='json', tablename='runsdb'):
     if not data:
         return
+    if format == 'sqlite-global':
+        sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
+        schema = {
+            'morcs_run': 'INTEGER',
+            'start_time': 'TEXT',
+            'end_time': 'TEXT',
+            'lrs_subrun': 'TEXT',
+            'mx2_subrun': 'TEXT'
+        }
+        sqlite_manager.create_table(tablename, schema)
 
-    if format=='sqlite':
+        global_subrun_data = {
+            str(10000+global_subrun): {
+                'morcs_run': info['run'],
+                'start_time': info['start_time'],
+                'end_time': info['end_time'],
+                'lrs_subrun': info['lrs_subrun'],
+                'mx2_subrun': info['mx2_subrun']
+            }
+            for global_subrun, info in data.items()
+        }
+
+        sqlite_manager.insert_data(tablename, global_subrun_data)
+        sqlite_manager.conn.commit()
+        sqlite_manager.close_connection()
+        print(f"Dumping table {tablename} to sqlite database file {filename}.db")
+
+    elif format=='sqlite':
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
         sqlite_manager.dump_data(data, tablename)
         sqlite_manager.close_connection()
