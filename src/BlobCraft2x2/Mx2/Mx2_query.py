@@ -2,9 +2,9 @@
 
 import argparse
 from ..DB import SQLiteDBManager
-from ..DataManager import dump, load_config, unix_to_iso
+from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
 
-def Mx2_blob_maker(run, dump_all_data=False):
+def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
     print(f"\n----------------------------------------Fetching Mx2 data for the run {run}----------------------------------------")
 
     config = load_config("config/Mx2_parameters.yaml")
@@ -12,6 +12,7 @@ def Mx2_blob_maker(run, dump_all_data=False):
 
     output = {}
     subruns = sqlite.get_subruns(table='runsubrun', start='subrunstarttime', end='subrunfinishtime', subrun='runsubrun', condition='runsubrun/10000')
+    if start and end: subruns = clean_subrun_dict(subruns, start=start, end=end)
 
     start_time = None
     end_time = None
@@ -29,9 +30,8 @@ def Mx2_blob_maker(run, dump_all_data=False):
             continue
 
         info = {key: val for key, val in data[0].items() if key != 'runsubrun'}
-        info['subrunstarttime'] = unix_to_iso(info['subrunstarttime'])
-        info['subrunfinishtime'] = unix_to_iso(info['subrunfinishtime'])
-
+        info['subrunstarttime'] = times['start_time']
+        info['subrunfinishtime'] = times['end_time']
         output[subrun] = info
 
     sqlite.close_connection()

@@ -1,15 +1,16 @@
 import argparse
 import yaml
 from ..DB import SQLiteDBManager
-from ..DataManager import dump, load_config, unix_to_iso
+from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
 
-def LRS_blob_maker(run, dump_all_data=False):
+def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
     config = load_config("config/LRS_parameters.yaml")
     sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
 
     output = {}
     subruns = sqlite.get_subruns(table='lrs_runs_data', start='start_time_unix', end='end_time_unix', subrun='subrun', condition='morcs_run_nr')
+    if start and end: subruns = clean_subrun_dict(subruns, start=start, end=end)
 
     start_time = None
     end_time = None
@@ -32,9 +33,11 @@ def LRS_blob_maker(run, dump_all_data=False):
 
         if not data:
             continue
-        unix_time_columns = {'start_time_unix', 'end_time_unix', 'first_event_tai', 'last_event_tai'}
+        unix_time_columns = {'first_event_tai', 'last_event_tai'}
 
         for row in data:
+            row['start_time_unix'] = times['start_time']
+            row['end_time_unix'] = times['end_time']
             row.update({col: unix_to_iso(row[col]) for col in unix_time_columns if col in row})
 
         moas_filename = data[0]["active_moas"] #moas filename is stored here which can then be used to get moas info (especially config id)

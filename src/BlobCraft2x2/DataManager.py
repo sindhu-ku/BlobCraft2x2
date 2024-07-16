@@ -11,6 +11,7 @@ from .DB import SQLiteDBManager
 from collections.abc import Mapping
 
 chicago_tz =  ZoneInfo("America/Chicago")
+default_utc_time = "1969-12-31T18:00:00-06:00"
 
 def parse_datetime(date_str, is_start):
     dt = date_parser.parse(date_str)
@@ -25,6 +26,32 @@ def parse_datetime(date_str, is_start):
 
 def unix_to_iso(unix_time):
     return datetime.fromtimestamp(unix_time, tz=chicago_tz).isoformat()
+
+def clean_subrun_dict(subrun_dict, start, end):
+    cleaned_subrun_dict = {}
+    subrun_info = sorted(subrun_dict.keys())
+
+    for i, subrun in enumerate(subrun_info):
+        start_time = subrun_dict[subrun]['start_time']
+        end_time = subrun_dict[subrun]['end_time']
+
+        if start_time == default_utc_time:
+            if i == 0:
+                subrun_dict[subrun]['start_time'] = start
+            else:
+                prev_subrun = subrun_info[i - 1]
+                subrun_dict[subrun]['start_time'] = subrun_dict[prev_subrun]['end_time']
+                
+        if end_time == default_utc_time:
+            if i < len(subrun_info) - 1:
+                next_subrun = subrun_info[i + 1]
+                subrun_dict[subrun]['end_time'] = subrun_dict[next_subrun]['start_time']
+            else:
+                subrun_dict[subrun]['end_time'] = end
+
+        cleaned_subrun_dict[subrun] = subrun_dict[subrun]
+
+    return cleaned_subrun_dict
 
 def load_config(config_file):
     with open(config_file, 'r') as f:

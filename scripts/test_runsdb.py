@@ -3,44 +3,18 @@ from BlobCraft2x2.LRS.LRS_query import LRS_blob_maker
 from BlobCraft2x2.Mx2.Mx2_query import Mx2_blob_maker
 from BlobCraft2x2.SC.SC_query import SC_blob_maker
 from BlobCraft2x2.DB import SQLiteDBManager
-from BlobCraft2x2.DataManager import load_config, dump
+from BlobCraft2x2.DataManager import load_config, dump, clean_subrun_dict
 
 run=50014
 start="2024-07-08T11:42:18"
 end="2024-07-08T13:35:51"
-default_utc_time = "1969-12-31T18:00:00-06:00"
 shift_subrun=10000000
-
-def clean_subrun_dict(subrun_dict):
-    cleaned_subrun_dict = {}
-    subrun_info = sorted(subrun_dict.keys())
-
-    for i, subrun in enumerate(subrun_info):
-        start_time = subrun_dict[subrun]['start_time']
-        end_time = subrun_dict[subrun]['end_time']
-
-        # Remove entry if both start and end times are default UTC time
-        if start_time == default_utc_time and end_time == default_utc_time:
-            continue
-
-        # Modify end time if it is default UTC time and not the last subrun
-        if end_time == default_utc_time and i < len(subrun_info) - 1:
-            next_subrun = subrun_info[i + 1]
-            subrun_dict[subrun]['end_time'] = subrun_dict[next_subrun]['start_time']
-
-        # Modify end time if it is default UTC time and it is the last subrun
-        if end_time == default_utc_time and i == len(subrun_info) - 1:
-            subrun_dict[subrun]['end_time'] = end
-
-        cleaned_subrun_dict[subrun] = subrun_dict[subrun]
-
-    return cleaned_subrun_dict
 
 def get_subrun_dict():
     def load_subrun_data(config_file, table, start, end, subrun, condition):
         config = load_config(config_file)
         sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
-        return clean_subrun_dict(sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition))
+        return clean_subrun_dict(sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition), start=start, end=end)
 
     lrs_subrun_dict = load_subrun_data("config/LRS_parameters.yaml", 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
     mx2_subrun_dict = load_subrun_data("config/Mx2_parameters.yaml", 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
@@ -143,12 +117,12 @@ def get_subrun_dict():
 def main():
     query_start = datetime.now()
 
-    LRS_summary= LRS_blob_maker(run=run) #get summary LRS info
+    LRS_summary= LRS_blob_maker(run=run, start=start, end=end) #get summary LRS info
 
-    Mx2_summary= Mx2_blob_maker(run=run) #get summary Mx2 info
+    Mx2_summary= Mx2_blob_maker(run=run, start=start, end=end) #get summary Mx2 info
 
-    #LRS_blob_maker(run=run, dump_all_data=True)   #dumps all tables in LRS DB into a json blob
-    #Mx2_blob_maker(run=run, dump_all_data=True)   #dumps all tables in Mx2 DB into a json blob
+    #LRS_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in LRS DB into a json blob
+    #Mx2_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in Mx2 DB into a json blob
 
     subrun_dict = get_subrun_dict()
 
