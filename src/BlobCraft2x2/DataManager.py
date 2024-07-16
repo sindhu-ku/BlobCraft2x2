@@ -45,7 +45,7 @@ def dump(data, filename, format='json', tablename='runsdb'):
         sqlite_manager.create_table(tablename, schema)
 
         global_subrun_data = {
-            str(10000+global_subrun): {
+            str(global_subrun): {
                 'morcs_run': info['run'],
                 'start_time': info['start_time'],
                 'end_time': info['end_time'],
