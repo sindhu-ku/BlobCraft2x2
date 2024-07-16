@@ -94,13 +94,16 @@ def get_last_O2():
 def get_spellman_hv():
     database, measurement, variables = get_influx_db_meas_vars("set_voltage")
     data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    if not data: return 0.0
     mean = get_mean(data, variables[0])
     return mean
 
 def get_mod_voltages():
+    mod_voltages = np.zeros(4)
     database, measurement, variables = get_influx_db_meas_vars("pick_off_voltages")
     data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
-    mod_voltages = np.zeros(4)
+    if not data:
+        return mod_voltages
     for i, var in enumerate(variables):
         mod_voltages[i] = get_mean(data, var)
     return mod_voltages
