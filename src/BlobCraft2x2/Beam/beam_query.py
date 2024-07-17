@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import pandas as pd
 from ..DataManager import load_config, dump
 from ..DB import IFBeamManager
 from ..DataManager import parse_datetime
@@ -8,9 +9,18 @@ from ..DataManager import parse_datetime
 config = load_config('config/IFbeam_parameters.yaml')
 manager = IFBeamManager(config)
 
+def calculate_total_pot(df_pot):
+    if df_pot.empty:
+        return 0.0, 0.0, 0.0
+    value = df_pot['value'].sum()
+
+    first_time = df_pot.loc[0, 'time']
+    last_time = df_pot.loc[len(df_pot) - 1, 'time']
+
+    return value, first_time, last_time
+
 def get_beam_summary(start, end, dump_data=False):
-    manager.set_time_range(start=start, end=end)
-    pot, first_time, last_time = manager.get_total_pot(config['pot_device_name'])
+    pot, first_time, last_time = get_POT(start, end, total=True)
     beam_data = {"Beam_summary":
                     {
                     "Total_POT": pot,
@@ -21,10 +31,15 @@ def get_beam_summary(start, end, dump_data=False):
     if dump_data: dump(beam_data, f"BeamTotalPOT_{start}_{end}")
     return beam_data
 
-def get_timeseries(start, end):
+def get_POT(start, end, total=False):
     manager.set_time_range(start=start, end=end)
-    pot_timseries_data = manager.get_pot(config['pot_device_name'])
-    dump(pot_timseries_data, f"BeamPOT_{start}_{end}")
+    df_pot = manager.get_data(config['pot_device_name'], combine_unit=True)
+    df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])]
+    if total:
+        return calculate_total_pot(df_pot)
+    else:
+        pot_timseries_data = time_series = df_pot.to_dict(orient='records')
+        dump(pot_timseries_data, f"BeamPOT_{start}_{end}")
 
 def main():
     parser = argparse.ArgumentParser(description="Query IFBeam database and dump data to JSON file.")
@@ -40,7 +55,7 @@ def main():
     if args.measurement == "Total POT":
         output = get_beam_summary(start.isoformat(), end.isoformat(), dump_data=True)
     elif args.measurement == "POT":
-        get_timeseries(start.isoformat(), end.isoformat())
+        get_POT(start.isoformat(), end.isoformat())
     else:
         raise ValueError(f"{args.measurement} not supported!")
 

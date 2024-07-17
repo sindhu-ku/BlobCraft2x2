@@ -289,65 +289,33 @@ class IFBeamManager:
             print(f'An error occurred: {e}')
             return None
 
-    def get_pot(self, device_name):
+    def get_data(self, device_name, combine_unit=False):
         url = self.make_url(device_name)
         print(f"Fetching POT data from {url}")
 
         data = self.fetch_data(url)
         if data:
-            return self.extract_time_series(data, combine=True)
+            return self.extract_time_series(data, combine_unit=combine_unit)
         else:
             print("WARNING: No data found!")
             return {}
 
-    def get_total_pot(self, device_name):
-        url = self.make_url(device_name)
-        print(f"Fetching POT data from {url}")
-
-        data = self.fetch_data(url)
-        if data:
-            value, unit, first_time, last_time = self.get_value(data, sum=True)
-            if value == 0.0 and unit == 'E0': pot = "no data"
-            else: pot = float(f"{value}{unit}")
-            return pot, first_time, last_time
-        else:
-            print("WARNING: No data found!")
-            return "no data", self.start, self.end
-
-    def get_value(self, data, sum=False):
+    def extract_time_series(self, data, combine_unit=False):
         if 'rows' in data:
             rows = data['rows']
         else:
             raise ValueError('No data rows found in beam data')
 
-        df = pd.DataFrame(rows)
-        if df.empty: return 0.0, 'E0', 0.0, 0.0
-        if sum: value = df['value'].sum()
-        else: value = df['value'].mean()
-        units = df['units']
-        if not units.nunique() == 1:
-            raise ValueError('WARNING: Units for this value are not consistent across the entire dataset')
-        unit = df.loc[0, 'units']
-
-        first_time = df.loc[0, 'time']
-        last_time = df.loc[len(df) - 1, 'time']
-
-        return value, unit, first_time, last_time
-
-    def extract_time_series(self, data, combine=False):
-        if 'rows' in data:
-            rows = data['rows']
-        else:
-            raise ValueError('No data rows found in beam data')
-
-        df = pd.DataFrame(rows)
-        if df.empty:
+        df_timeseries = pd.DataFrame(rows)
+        if df_timeseries.empty:
             return []
 
-        if combine:
-            df['value'] = df.apply(lambda row: f"{row['value']}{row['units']}", axis=1)
-            time_series = df[['time', 'value']].to_dict(orient='records')
+        if combine_unit:
+            df_timeseries['value'] = df_timeseries.apply(lambda row: f"{row['value']}{row['units']}", axis=1)
+            df_timeseries = df_timeseries[['time', 'value']]
         else:
-            time_series = df[['time', 'value', 'units']].to_dict(orient='records')
+            df_timeseries = df_timeseries[['time', 'value', 'unit']]
 
-        return time_series
+        df_timeseries['value'] = pd.to_numeric(df_timeseries['value'], errors='coerce')
+
+        return df_timeseries
