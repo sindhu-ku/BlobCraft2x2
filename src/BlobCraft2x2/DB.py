@@ -308,7 +308,8 @@ class IFBeamManager:
 
         df_timeseries = pd.DataFrame(rows)
         if df_timeseries.empty:
-            return []
+            print("WARNING: No data found!")
+            return df_timeseries
 
         if combine_unit:
             df_timeseries['value'] = df_timeseries.apply(lambda row: f"{row['value']}{row['units']}", axis=1)

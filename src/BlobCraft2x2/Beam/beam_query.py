@@ -34,7 +34,7 @@ def get_beam_summary(start, end, dump_data=False):
 def get_POT(start, end, total=False):
     manager.set_time_range(start=start, end=end)
     df_pot = manager.get_data(config['pot_device_name'], combine_unit=True)
-    df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])]
+    if not df_pot.empty: df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])]
     if total:
         return calculate_total_pot(df_pot)
     else:
