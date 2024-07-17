@@ -38,7 +38,7 @@ def get_POT(start, end, total=False):
     if total:
         return calculate_total_pot(df_pot)
     else:
-        pot_timseries_data = time_series = df_pot.to_dict(orient='records')
+        pot_timseries_data = df_pot.to_dict(orient='records')
         dump(pot_timseries_data, f"BeamPOT_{start}_{end}")
 
 def main():
