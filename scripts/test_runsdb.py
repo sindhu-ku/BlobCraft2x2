@@ -9,8 +9,7 @@ run=50014
 start="2024-07-08T11:42:18"
 end="2024-07-08T13:35:51"
 shift_subrun=10000000
-lrs_subrun_timediff=2 #seconds
-mx2_subrun_timediff=25 #seconds
+subrun_timediff=5 #seconds
 
 def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
     final_global_subrun_dict = {}
@@ -21,9 +20,10 @@ def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
         end_time = datetime.fromisoformat(times['end_time'])
         duration = (end_time - start_time).total_seconds()
         if duration == 0: continue
-        if times['lrs_subrun'] is None and duration < lrs_subrun_timediff or times['mx2_subrun'] is None and duration < mx2_subrun_timediff:
-            time_shift = timedelta(seconds=duration)
-            continue
+        if times['lrs_subrun'] is None or times['mx2_subrun'] is None:
+            if duration < subrun_timediff:
+                time_shift = timedelta(seconds=duration)
+                continue
 
         if time_shift is not None:
             start_time = start_time - time_shift
