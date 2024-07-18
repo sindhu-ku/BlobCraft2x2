@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from BlobCraft2x2.LRS.LRS_query import LRS_blob_maker
 from BlobCraft2x2.Mx2.Mx2_query import Mx2_blob_maker
 from BlobCraft2x2.SC.SC_query import SC_blob_maker
@@ -9,6 +9,35 @@ run=50014
 start="2024-07-08T11:42:18"
 end="2024-07-08T13:35:51"
 shift_subrun=10000000
+lrs_subrun_timediff=2 #seconds
+mx2_subrun_timediff=25 #seconds
+
+def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
+    final_global_subrun_dict = {}
+    new_global_subrun_id = run * shift_subrun
+    time_shift = None
+    for old_id, times in sorted(global_subrun_dict.items()):
+        start_time = datetime.fromisoformat(times['start_time'])
+        end_time = datetime.fromisoformat(times['end_time'])
+        duration = (end_time - start_time).total_seconds()
+        if duration == 0: continue
+        if times['lrs_subrun'] is None and duration < lrs_subrun_timediff or times['mx2_subrun'] is None and duration < mx2_subrun_timediff:
+            time_shift = timedelta(seconds=duration)
+            continue
+
+        if time_shift is not None:
+            start_time = start_time - time_shift
+            time_shift = None
+
+        final_global_subrun_dict[new_global_subrun_id] = {
+            'run': times['run'],
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'lrs_subrun': times['lrs_subrun'],
+            'mx2_subrun': times['mx2_subrun']
+        }
+        new_global_subrun_id += 1
+    return final_global_subrun_dict
 
 def get_subrun_dict():
     def load_subrun_data(config_file, table, start, end, subrun, condition):
@@ -95,14 +124,7 @@ def get_subrun_dict():
         last_mx2_end_time = max(mx2_subrun_dict[subrun]['end_time'] for subrun in mx2_subrun_dict)
         global_subrun_dict[global_subrun]['end_time'] = max(last_lrs_end_time, last_mx2_end_time)
 
-    filtered_global_subrun_dict = {k: v for k, v in global_subrun_dict.items() if v['start_time'] != v['end_time']}
-
-    final_global_subrun_dict = {}
-    new_global_subrun_id = run * shift_subrun
-    for old_id, times in sorted(filtered_global_subrun_dict.items()):
-        final_global_subrun_dict[new_global_subrun_id] = times
-        new_global_subrun_id += 1
-
+    final_global_subrun_dict = clean_global_subrun_dict(global_subrun_dict)
 
     #printing
     # for global_subrun, times in final_global_subrun_dict.items():
