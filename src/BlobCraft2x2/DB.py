@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 import sqlalchemy as alc
 import sqlite3
@@ -192,23 +191,6 @@ class SQLiteDBManager:
             subruns[subrun_number] = subrun_times
 
         return subruns
-
-    def get_moas_version_data(self, moas_filename, moas_columns):
-        moas_version = moas_filename[5:-4]
-
-        moas_data = self.query_data(table_name='moas_versions', conditions=[f"version=='{moas_version}'"], columns=moas_columns)
-
-        if not moas_data:
-            raise ValueError(f"ERROR: No data found for MOAS version extracted from filename: {moas_filename}")
-        if len(moas_data) > 1:
-            raise ValueError(f"ERROR: Multiple MOAS versions found for this run/subrun {moas_version}")
-        return [dict(zip(moas_columns, row)) for row in moas_data]
-
-    def get_moas_channels_data(self, config_id, moas_channels_columns):
-        moas_channels_data = self.query_data(table_name='moas_channels', conditions=[f"config_id=={config_id}"], columns=moas_channels_columns)
-        if not moas_channels_data:
-            raise ValueError(f"ERROR: No MOAS channels data found")
-        return [dict(zip(moas_channels_columns, row)) for row in moas_channels_data]
 
     def extract_schema(self, data):
         schema = {}

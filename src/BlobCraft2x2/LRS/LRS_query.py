@@ -46,7 +46,14 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         if not moas_filename:
             raise ValueError(f"ERROR: No MOAS version found")
 
-        moas_dict = sqlite.get_moas_version_data(moas_filename, moas_columns)
+        moas_version = moas_filename[5:-4]
+        moas_data = sqlite.query_data(table_name='moas_versions', conditions=[f"version=='{moas_version}'"], columns=moas_columns)
+        if not moas_data:
+            raise ValueError(f"ERROR: No data found for MOAS version extracted from filename: {moas_filename}")
+        if len(moas_data) > 1:
+            raise ValueError(f"ERROR: Multiple MOAS versions found for this run/subrun {moas_version}")
+        moas_dict = [dict(zip(moas_columns, row)) for row in moas_data]
+
         data[0].update(moas_dict[0])
         data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         output[subrun] = data[0]
@@ -59,7 +66,11 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         if len(config_ids) > 1:
             raise ValueError(f"ERROR: Multiple config_id values found for MOAS version {moas_version}")
 
-        moas_channels_dict = sqlite.get_moas_channels_data(config_ids[0], moas_channels_columns) #Then get the channel information based on the config id for that particular run/subrun
+        moas_channels_data = sqlite.query_data(table_name='moas_channels', conditions=[f"config_id=={config_id}"], columns=moas_channels_columns)
+        if not moas_channels_data:
+            raise ValueError(f"ERROR: No MOAS channels data found")
+
+        moas_channels_dict = [dict(zip(moas_channels_columns, row)) for row in moas_channels_data] #Then get the channel information based on the config id for that particular run/subrun
         output[subrun]["moas_channels"] = moas_channels_dict
 
     sqlite.close_connection()

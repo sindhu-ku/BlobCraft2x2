@@ -19,6 +19,16 @@ def calculate_total_pot(df_pot):
 
     return value, first_time, last_time
 
+def get_POT(start, end, total=False):
+    manager.set_time_range(start=start, end=end)
+    df_pot = manager.get_data(config['pot_device_name'], combine_unit=True)
+    if not df_pot.empty: df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])].reset_index(drop=True)
+    if total:
+        return calculate_total_pot(df_pot)
+    else:
+        pot_timseries_data = df_pot.to_dict(orient='records')
+        dump(pot_timseries_data, f"BeamPOT_{start}_{end}")
+
 def get_beam_summary(start, end, dump_data=False):
     pot, first_time, last_time = get_POT(start, end, total=True)
     beam_data =  {
@@ -30,15 +40,6 @@ def get_beam_summary(start, end, dump_data=False):
     if dump_data: dump(beam_data, f"BeamTotalPOT_{start}_{end}")
     return beam_data
 
-def get_POT(start, end, total=False):
-    manager.set_time_range(start=start, end=end)
-    df_pot = manager.get_data(config['pot_device_name'], combine_unit=True)
-    if not df_pot.empty: df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])].reset_index(drop=True)
-    if total:
-        return calculate_total_pot(df_pot)
-    else:
-        pot_timseries_data = df_pot.to_dict(orient='records')
-        dump(pot_timseries_data, f"BeamPOT_{start}_{end}")
 
 def main():
     parser = argparse.ArgumentParser(description="Query IFBeam database and dump data to JSON file.")

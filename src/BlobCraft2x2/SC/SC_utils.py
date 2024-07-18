@@ -128,7 +128,7 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
         ground_tag, bad_ground_per = get_tag("ground_impedance", "resistance", glob.config_influx["good_ground_impedance"])
         LAr_tag, bad_LAr_per = get_tag("LAr_level_mm", "magnitude", glob.config_influx["good_LAr_level"])
         O2_meas = get_last_O2()
-        #electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
+        electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
         set_voltage = get_spellman_hv()
         mod_voltages = get_mod_voltages()
         electric_fields = mod_voltages/(1e3*glob.config_influx["drift_dist"])
@@ -142,10 +142,10 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
                 "quality": LAr_tag,
                 "bad_values_percent": bad_LAr_per
             },
-            # "Purity_monitor": {
-            #     "Last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
-            #     "Electron_lifetime_s": electron_lifetime[1]
-            # },
+            "Purity_monitor": {
+                "last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
+                "electron_lifetime_ms": electron_lifetime[1]*1e3
+            },
             "O2_ppb": {
                 "last_timestamp": O2_meas['time'],
                 "value": O2_meas['magnitude']
