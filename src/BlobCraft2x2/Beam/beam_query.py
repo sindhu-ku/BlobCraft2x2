@@ -21,13 +21,12 @@ def calculate_total_pot(df_pot):
 
 def get_beam_summary(start, end, dump_data=False):
     pot, first_time, last_time = get_POT(start, end, total=True)
-    beam_data = {"Beam_summary":
-                    {
+    beam_data =  {
                     "Total_POT": pot,
                     "Start": first_time,
                     "End": last_time
                     }
-                }
+
     if dump_data: dump(beam_data, f"BeamTotalPOT_{start}_{end}")
     return beam_data
 

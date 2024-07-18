@@ -117,7 +117,7 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
             glob.influxDB.set_time_range(glob.start, glob.end)
 
             if glob.measurement=="runsdb":
-                beam_data = get_beam_summary(start_t, end_t)
+                beam_data = {"beam_summary": get_beam_summary(start_t, end_t)}
                 SC_data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
                 data[subrun] = {**SC_data, **beam_data}
             if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)

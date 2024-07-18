@@ -291,13 +291,11 @@ class IFBeamManager:
 
     def get_data(self, device_name, combine_unit=False):
         url = self.make_url(device_name)
-        print(f"Fetching POT data from {url}")
-
         data = self.fetch_data(url)
         if data:
             return self.extract_time_series(data, combine_unit=combine_unit)
         else:
-            print("WARNING: No data found!")
+            print(f"WARNING: No beam data found for {self.start} to {self.end}!")
             return {}
 
     def extract_time_series(self, data, combine_unit=False):
@@ -308,7 +306,7 @@ class IFBeamManager:
 
         df_timeseries = pd.DataFrame(rows)
         if df_timeseries.empty:
-            print("WARNING: No data found!")
+            print(f"WARNING: No beam data found from {self.start} to {self.end}!")
             return df_timeseries
 
         if combine_unit:

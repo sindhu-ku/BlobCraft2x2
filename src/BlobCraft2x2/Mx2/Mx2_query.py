@@ -3,6 +3,7 @@
 import argparse
 from ..DB import SQLiteDBManager
 from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
+from ..Beam.beam_query import get_beam_summary
 
 def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
     print(f"\n----------------------------------------Fetching Mx2 data for the run {run}----------------------------------------")
@@ -24,6 +25,7 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
         columns = [c.lower() for c in columns]
         conditions = [f'runsubrun/10000={run}', f'runsubrun%10000={subrun}']
         rows = sqlite.query_data(table_name='runsubrun', columns=columns, conditions=conditions)
+
         data = [dict(zip(columns, row)) for row in rows]
 
         if not data:
@@ -32,6 +34,7 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
         info = {key: val for key, val in data[0].items() if key != 'runsubrun'}
         info['subrunstarttime'] = times['start_time']
         info['subrunfinishtime'] = times['end_time']
+        info["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         output[subrun] = info
 
     sqlite.close_connection()

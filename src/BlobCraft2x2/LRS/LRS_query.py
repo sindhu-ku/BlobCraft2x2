@@ -2,6 +2,7 @@ import argparse
 import yaml
 from ..DB import SQLiteDBManager
 from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
+from ..Beam.beam_query import get_beam_summary
 
 def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
@@ -31,6 +32,7 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         meta_rows = sqlite.query_data(table_name='lrs_runs_data', conditions=[f"morcs_run_nr=={run}", f"subrun=={subrun}"], columns=meta_columns)
         data = [dict(zip(meta_columns, row)) for row in meta_rows]
 
+
         if not data:
             continue
         unix_time_columns = {'first_event_tai', 'last_event_tai'}
@@ -46,7 +48,9 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
 
         moas_dict = sqlite.get_moas_version_data(moas_filename, moas_columns)
         data[0].update(moas_dict[0])
+        data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         output[subrun] = data[0]
+        output[subrun]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
 
         if not dump_all_data: continue
 
