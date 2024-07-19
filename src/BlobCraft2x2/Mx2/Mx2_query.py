@@ -42,9 +42,10 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
     if not any(output.values()):
         print(f"No data found for run number {run} in the Mx2 database")
 
-    else:
-        if dump_all_data: dump(output, f'Mx2_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
-        else: return output
+    elif dump_all_data:
+        dump(output, f'Mx2_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
+
+    return output
 
 def main():
     parser = argparse.ArgumentParser(description="Query Mx2 SQLite database and dump data to JSON file.")

@@ -82,6 +82,8 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         fname = f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}'
         dump(output, fname)
 
+    return output
+
 
 def main():
     parser = argparse.ArgumentParser(description="Query LRS SQLite database and dump data to JSON file.")

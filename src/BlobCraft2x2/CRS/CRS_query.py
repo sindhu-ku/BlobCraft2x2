@@ -51,6 +51,7 @@ def CRS_blob_maker(run):
 
     fname = f'CRS_all_ucondb_measurements_run-{run}-{start_str}_{end_str}'
     dump(output, fname)
+    return output
 
 
 def main():
