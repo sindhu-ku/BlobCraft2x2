@@ -1,9 +1,13 @@
+#!/usr/bin/env python3
+
 from datetime import datetime, timedelta
 from BlobCraft2x2.LRS.LRS_query import LRS_blob_maker
 from BlobCraft2x2.Mx2.Mx2_query import Mx2_blob_maker
 from BlobCraft2x2.SC.SC_query import SC_blob_maker
 from BlobCraft2x2.DB import SQLiteDBManager
 from BlobCraft2x2.DataManager import load_config, dump, clean_subrun_dict
+
+import json
 
 run=50014
 start="2024-07-08T11:42:18"
@@ -20,7 +24,8 @@ def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
         end_time = datetime.fromisoformat(times['end_time'])
         duration = (end_time - start_time).total_seconds()
         if duration == 0: continue
-        if times['lrs_subrun'] is None or times['mx2_subrun'] is None:
+        if times['crs_subrun'] is None or times['lrs_subrun'] is None \
+           or times['mx2_subrun'] is None:
             if duration < subrun_timediff:
                 time_shift = timedelta(seconds=duration)
                 continue
@@ -33,6 +38,7 @@ def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
             'run': times['run'],
             'start_time': start_time.isoformat(),
             'end_time': end_time.isoformat(),
+            'crs_subrun': times['crs_subrun'],
             'lrs_subrun': times['lrs_subrun'],
             'mx2_subrun': times['mx2_subrun']
         }
@@ -45,6 +51,7 @@ def get_subrun_dict():
         sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
         return clean_subrun_dict(sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition), start=start, end=end)
 
+    crs_subrun_dict = load_subrun_data("config/CRS_parameters.yaml", 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
     lrs_subrun_dict = load_subrun_data("config/LRS_parameters.yaml", 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
     mx2_subrun_dict = load_subrun_data("config/Mx2_parameters.yaml", 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
     #Test example
@@ -52,6 +59,8 @@ def get_subrun_dict():
     # mx2_subrun_dict = {1: {'start_time': '2024-07-08T10:47:22-05:00', 'end_time': '2024-07-08T10:49:09-05:00'}, 2: {'start_time': '2024-07-08T10:49:09-05:00', 'end_time': '2024-07-08T10:59:15-05:00'}}
 
     subrun_info = []
+    for subrun, times in crs_subrun_dict.items():
+        subrun_info.extend([(times['start_time'], 'crs', 'start', subrun), (times['end_time'], 'crs', 'end', subrun)])
     for subrun, times in lrs_subrun_dict.items():
         subrun_info.extend([(times['start_time'], 'lrs', 'start', subrun), (times['end_time'], 'lrs', 'end', subrun)])
     for subrun, times in mx2_subrun_dict.items():
@@ -60,69 +69,49 @@ def get_subrun_dict():
     subrun_info.sort()  # Sort subrun_info by time
 
     global_subrun_dict = {}
-    global_subrun = run * shift_subrun
-    lrs_running, mx2_running = False, False
-    current_start_time = None
+    first_global_subrun = run * shift_subrun
+    global_subrun = first_global_subrun - 1
+    # crs_running, lrs_running, mx2_running = False, False, False
+    now_running = {'crs': None,
+                   'lrs': None,
+                   'mx2': None}
+    # current_start_time = None
 
-    def update_global_subrun_dict(start_time, lrs_subrun=None, mx2_subrun=None):
+    def update_global_subrun_dict(start_time, crs_subrun=None, lrs_subrun=None, mx2_subrun=None):
         global_subrun_dict[global_subrun] = {
             'run': run,
             'start_time': start_time,
             'end_time': None,
+            'crs_subrun': crs_subrun,
             'lrs_subrun': lrs_subrun,
             'mx2_subrun': mx2_subrun
         }
 
-    for subrun_time, system, subrun_type, subrun in subrun_info:
+    for i, (subrun_time, system, subrun_type, subrun) in enumerate(subrun_info):
+        global_subrun = first_global_subrun + i
         if subrun_type == 'start':
-            if not lrs_running and not mx2_running:
-                current_start_time = subrun_time
-                update_global_subrun_dict(current_start_time, subrun if system == 'lrs' else None, subrun if system == 'mx2' else None)
-            elif system == 'lrs' and not lrs_running:
-                global_subrun_dict[global_subrun]['end_time'] = subrun_time
-                global_subrun += 1
-                current_start_time = subrun_time
-                update_global_subrun_dict(current_start_time, subrun, global_subrun_dict[global_subrun - 1]['mx2_subrun'])
-            elif system == 'mx2' and not mx2_running:
-                global_subrun_dict[global_subrun]['end_time'] = subrun_time
-                global_subrun += 1
-                current_start_time = subrun_time
-                update_global_subrun_dict(current_start_time, global_subrun_dict[global_subrun - 1]['lrs_subrun'], subrun)
-
-            if system == 'lrs':
-                lrs_running = True
-            elif system == 'mx2':
-                mx2_running = True
-
+            now_running[system] = subrun
         elif subrun_type == 'end':
-            if subrun_time == global_subrun_dict[global_subrun]['end_time']:
-                continue
-            if system == 'lrs':
-                lrs_running = False
-            elif system == 'mx2':
-                mx2_running = False
+            # if subrun_time == global_subrun_dict[global_subrun]['end_time']:
+            #     global_subrun -= 1
+            #     continue
+            now_running[system] = None
 
-            if not lrs_running and not mx2_running:
-                if current_start_time != subrun_time:
-                    global_subrun_dict[global_subrun]['end_time'] = subrun_time
-                    global_subrun += 1
-            elif lrs_running and not mx2_running:
-                if current_start_time != subrun_time:
-                    global_subrun_dict[global_subrun]['end_time'] = subrun_time
-                    global_subrun += 1
-                    current_start_time = subrun_time
-                    update_global_subrun_dict(current_start_time, global_subrun_dict[global_subrun - 1]['lrs_subrun'], None)
-            elif mx2_running and not lrs_running:
-                if current_start_time != subrun_time:
-                    global_subrun_dict[global_subrun]['end_time'] = subrun_time
-                    global_subrun += 1
-                    current_start_time = subrun_time
-                    update_global_subrun_dict(current_start_time, None, global_subrun_dict[global_subrun - 1]['mx2_subrun'])
+        if global_subrun != first_global_subrun:
+            global_subrun_dict[global_subrun - 1]['end_time'] = subrun_time
+
+        update_global_subrun_dict(subrun_time,
+                                  now_running['crs'],
+                                  now_running['lrs'],
+                                  now_running['mx2'])
 
     if global_subrun in global_subrun_dict and global_subrun_dict[global_subrun]['end_time'] is None:
+        last_crs_end_time = max(crs_subrun_dict[subrun]['end_time'] for subrun in crs_subrun_dict)
         last_lrs_end_time = max(lrs_subrun_dict[subrun]['end_time'] for subrun in lrs_subrun_dict)
         last_mx2_end_time = max(mx2_subrun_dict[subrun]['end_time'] for subrun in mx2_subrun_dict)
-        global_subrun_dict[global_subrun]['end_time'] = max(last_lrs_end_time, last_mx2_end_time)
+        global_subrun_dict[global_subrun]['end_time'] = max(last_crs_end_time,
+                                                            last_lrs_end_time,
+                                                            last_mx2_end_time)
 
     final_global_subrun_dict = clean_global_subrun_dict(global_subrun_dict)
 
@@ -139,6 +128,10 @@ def get_subrun_dict():
 def main():
     query_start = datetime.now()
 
+    with open('blobs/CRS_all_ucondb_measurements_run-50005-2024-07-02T16:31:28.032552-05:00_2024-07-04T12:46:11.334350-05:00.json') as f:
+        CRS_summary = json.load(f)
+
+    # CRS_summary= CRS_blob_maker(run=run, start=start, end=end) #get summary LRS info
     LRS_summary= LRS_blob_maker(run=run, start=start, end=end) #get summary LRS info
 
     Mx2_summary= Mx2_blob_maker(run=run, start=start, end=end) #get summary Mx2 info
@@ -149,13 +142,14 @@ def main():
     subrun_dict = get_subrun_dict()
 
 
-    SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
+    # SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
 
     #SC_blob_maker(measurement_name="ucondb", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subrun_info into a a json blob
 
     #dump summary into sqlite db
     dump(subrun_dict, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite-global', tablename='Global_subrun_info')
-    dump(SC_beam_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='SC_beam_summary')
+    # dump(SC_beam_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='SC_beam_summary')
+    dump(CRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='CRS_summary')
     dump(LRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='LRS_summary')
     dump(Mx2_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='Mx2_summary')
 

@@ -8,8 +8,7 @@ import tarfile
 import h5py
 import numpy as np
 
-from ..DataManager import dump, load_config
-from ..LRS.LRS_query import unix_to_iso
+from ..DataManager import dump, load_config, unix_to_iso
 
 
 def get_config_data(h5path):
@@ -42,7 +41,9 @@ def CRS_blob_maker(run, sql_format=False):
             end_time = f['meta'].attrs['modified']
             msg_rate = len(f['msgs']) / (end_time - start_time)
 
-            info['subrun'] = subrun
+            if sql_format:
+                info['subrun'] = subrun
+
             info['morcs_run_nr'] = run
             info['start_time_unix'] = start_time
             info['end_time_unix'] = end_time

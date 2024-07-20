@@ -66,6 +66,7 @@ def dump(data, filename, format='json', tablename='runsdb'):
             'morcs_run': 'INTEGER',
             'start_time': 'TEXT',
             'end_time': 'TEXT',
+            'crs_subrun': 'TEXT',
             'lrs_subrun': 'TEXT',
             'mx2_subrun': 'TEXT'
         }
@@ -76,6 +77,7 @@ def dump(data, filename, format='json', tablename='runsdb'):
                 'morcs_run': info['run'],
                 'start_time': info['start_time'],
                 'end_time': info['end_time'],
+                'crs_subrun': info['crs_subrun'],
                 'lrs_subrun': info['lrs_subrun'],
                 'mx2_subrun': info['mx2_subrun']
             }
