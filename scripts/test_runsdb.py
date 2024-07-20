@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 
+import argparse
 from datetime import datetime, timedelta
+from pathlib import Path
+import json
+
 from BlobCraft2x2.LRS.LRS_query import LRS_blob_maker
 from BlobCraft2x2.Mx2.Mx2_query import Mx2_blob_maker
 from BlobCraft2x2.SC.SC_query import SC_blob_maker
 from BlobCraft2x2.DB import SQLiteDBManager
 from BlobCraft2x2.DataManager import load_config, dump, clean_subrun_dict
 
-import json
-
-run=50014
-start="2024-07-08T11:42:18"
-end="2024-07-08T13:35:51"
+# run=50014
+# start="2024-07-08T11:42:18"
+# end="2024-07-08T13:35:51"
 shift_subrun=10000000
 subrun_timediff=5 #seconds
 
-def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
+def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subruns
     final_global_subrun_dict = {}
     new_global_subrun_id = run * shift_subrun
     time_shift = None
@@ -45,7 +47,7 @@ def clean_global_subrun_dict(global_subrun_dict): #remove really small subruns
         new_global_subrun_id += 1
     return final_global_subrun_dict
 
-def get_subrun_dict():
+def get_subrun_dict(run):
     def load_subrun_data(config_file, table, start, end, subrun, condition):
         config = load_config(config_file)
         sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
@@ -113,7 +115,7 @@ def get_subrun_dict():
                                                             last_lrs_end_time,
                                                             last_mx2_end_time)
 
-    final_global_subrun_dict = clean_global_subrun_dict(global_subrun_dict)
+    final_global_subrun_dict = clean_global_subrun_dict(global_subrun_dict, run)
 
     #printing
     # for global_subrun, times in final_global_subrun_dict.items():
@@ -126,32 +128,45 @@ def get_subrun_dict():
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--run', type=int, default=50014)
+    ap.add_argument('--start', default="2024-07-08T11:42:18")
+    ap.add_argument('--end', default="2024-07-08T13:35:51")
+    ap.add_argument('-o', '--output')
+    args = ap.parse_args()
+
     query_start = datetime.now()
 
-    with open('blobs/CRS_all_ucondb_measurements_run-50005-2024-07-02T16:31:28.032552-05:00_2024-07-04T12:46:11.334350-05:00.json') as f:
+    # HACK
+    pattern = f'CRS_all_ucondb_measurements_run-{args.run:05d}*.json'
+    path = next(Path('blobs_CRS').glob(pattern))
+    with open(path) as f:
         CRS_summary = json.load(f)
 
     # CRS_summary= CRS_blob_maker(run=run, start=start, end=end) #get summary LRS info
-    LRS_summary= LRS_blob_maker(run=run, start=start, end=end) #get summary LRS info
+    LRS_summary= LRS_blob_maker(run=args.run, start=args.start, end=args.end) #get summary LRS info
 
-    Mx2_summary= Mx2_blob_maker(run=run, start=start, end=end) #get summary Mx2 info
+    Mx2_summary= Mx2_blob_maker(run=args.run, start=args.start, end=args.end) #get summary Mx2 info
 
     #LRS_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in LRS DB into a json blob
     #Mx2_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in Mx2 DB into a json blob
 
-    subrun_dict = get_subrun_dict()
-
+    subrun_dict = get_subrun_dict(args.run)
 
     # SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
 
     #SC_blob_maker(measurement_name="ucondb", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subrun_info into a a json blob
 
+    filename = args.output
+    if not filename:
+        filename =  f'Runsdb_run_{args.run}_{args.start}_{args.end}'
+
     #dump summary into sqlite db
-    dump(subrun_dict, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite-global', tablename='Global_subrun_info')
+    dump(subrun_dict, filename=filename, format='sqlite-global', tablename='Global_subrun_info')
     # dump(SC_beam_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='SC_beam_summary')
-    dump(CRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='CRS_summary', run=run)
-    dump(LRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='LRS_summary', run=run)
-    dump(Mx2_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='Mx2_summary', run=run)
+    dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', run=args.run)
+    dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', run=args.run)
+    dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', run=args.run)
 
 
     query_end = datetime.now()
