@@ -55,9 +55,9 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         moas_dict = [dict(zip(moas_columns, row)) for row in moas_data]
 
         data[0].update(moas_dict[0])
-        data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
+        # data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         output[subrun] = data[0]
-        output[subrun]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
+        # output[subrun]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
 
         if not dump_all_data: continue
 

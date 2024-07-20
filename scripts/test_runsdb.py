@@ -149,9 +149,9 @@ def main():
     #dump summary into sqlite db
     dump(subrun_dict, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite-global', tablename='Global_subrun_info')
     # dump(SC_beam_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='SC_beam_summary')
-    dump(CRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='CRS_summary')
-    dump(LRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='LRS_summary')
-    dump(Mx2_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='Mx2_summary')
+    dump(CRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='CRS_summary', run=run)
+    dump(LRS_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='LRS_summary', run=run)
+    dump(Mx2_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='Mx2_summary', run=run)
 
 
     query_end = datetime.now()

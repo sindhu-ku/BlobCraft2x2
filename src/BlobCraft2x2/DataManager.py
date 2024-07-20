@@ -57,7 +57,7 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
 
-def dump(data, filename, format='json', tablename='runsdb'):
+def dump(data, filename, format='json', tablename='runsdb', run=None):
     if not data:
         return
     if format == 'sqlite-global':
@@ -91,6 +91,9 @@ def dump(data, filename, format='json', tablename='runsdb'):
 
     elif format=='sqlite':
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
+        if run is not None:
+            data = {k: {'morcs_run': run, **v}
+                    for k, v in data.items()}
         sqlite_manager.dump_data(data, tablename)
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")
