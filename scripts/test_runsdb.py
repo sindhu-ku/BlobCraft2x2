@@ -10,6 +10,7 @@ from BlobCraft2x2.Mx2.Mx2_query import Mx2_blob_maker
 from BlobCraft2x2.SC.SC_query import SC_blob_maker
 from BlobCraft2x2.DB import SQLiteDBManager
 from BlobCraft2x2.DataManager import load_config, dump, clean_subrun_dict
+from BlobCraft2x2.DataManager import parse_datetime
 
 # run=50014
 # start="2024-07-08T11:42:18"
@@ -47,11 +48,12 @@ def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subr
         new_global_subrun_id += 1
     return final_global_subrun_dict
 
-def get_subrun_dict(run):
+def get_subrun_dict(run, morcs_start, morcs_end):
     def load_subrun_data(config_file, table, start, end, subrun, condition):
         config = load_config(config_file)
         sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
-        return clean_subrun_dict(sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition), start=start, end=end)
+        data = sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition)
+        return clean_subrun_dict(data, start=morcs_start, end=morcs_end)
 
     crs_subrun_dict = load_subrun_data("config/CRS_parameters.yaml", 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
     lrs_subrun_dict = load_subrun_data("config/LRS_parameters.yaml", 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
@@ -151,9 +153,12 @@ def main():
     #LRS_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in LRS DB into a json blob
     #Mx2_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in Mx2 DB into a json blob
 
-    subrun_dict = get_subrun_dict(args.run)
+    # morcs_start = parse_datetime(args.start, is_start=True)
+    # morcs_end = parse_datetime(args.end, is_start=False)
+    # subrun_dict = get_subrun_dict(args.run, morcs_start, morcs_end)
+    subrun_dict = get_subrun_dict(args.run, args.start, args.end)
 
-    SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=args.run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
+    # SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=args.run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
 
     #SC_blob_maker(measurement_name="ucondb", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subrun_info into a a json blob
 
@@ -163,7 +168,7 @@ def main():
 
     #dump summary into sqlite db
     dump(subrun_dict, filename=filename, format='sqlite-global', tablename='Global_subrun_info')
-    dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary')
+    # dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary')
     dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', run=args.run)
     dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', run=args.run)
     dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', run=args.run)

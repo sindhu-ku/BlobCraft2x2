@@ -23,9 +23,9 @@ for f in blobs_tmp/*.SQL.json; do
     scripts/json2sqlite.py -i "$f" -o config/crs_runs.db
 done
 
-rm -f "$outname"
+rm -f "$outname.db"
 
-scripts/test_runsdb.py -o "$outname" --run 50005 --start 2024-07-02T16:31:47 --end 2024-07-04T12:47:06
-# scripts/test_runsdb.py -o "$outname" --run 50011 --start 2024-07-07T11:19:35 --end 2024-07-08T09:45:57
-scripts/test_runsdb.py -o "$outname" --run 50017 --start 2024-07-08T13:43:45 --end 2024-07-10T09:21:59
-scripts/test_runsdb.py -o "$outname" --run 50018 --start 2024-07-10T09:36:33 --end 2024-07-12T04:03:32
+scripts/test_runsdb.py -o "$outname" --run 50005 --start 2024-07-02T16:31:47-05:00 --end 2024-07-04T12:47:06-05:00
+scripts/test_runsdb.py -o "$outname" --run 50011 --start 2024-07-07T11:19:35-05:00 --end 2024-07-08T09:45:57-05:00
+scripts/test_runsdb.py -o "$outname" --run 50017 --start 2024-07-08T13:43:45-05:00 --end 2024-07-10T09:21:59-05:00
+scripts/test_runsdb.py -o "$outname" --run 50018 --start 2024-07-10T09:36:33-05:00 --end 2024-07-12T04:03:32-05:00
