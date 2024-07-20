@@ -153,7 +153,7 @@ def main():
 
     subrun_dict = get_subrun_dict(args.run)
 
-    # SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
+    SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=args.run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
 
     #SC_blob_maker(measurement_name="ucondb", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subrun_info into a a json blob
 
@@ -163,7 +163,7 @@ def main():
 
     #dump summary into sqlite db
     dump(subrun_dict, filename=filename, format='sqlite-global', tablename='Global_subrun_info')
-    # dump(SC_beam_summary, filename=f'Runsdb_run_{run}_{start}_{end}', format='sqlite', tablename='SC_beam_summary')
+    dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary')
     dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', run=args.run)
     dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', run=args.run)
     dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', run=args.run)
