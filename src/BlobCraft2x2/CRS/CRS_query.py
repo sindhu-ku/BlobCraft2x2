@@ -8,6 +8,7 @@ import tarfile
 import h5py
 import numpy as np
 
+from ..Beam.beam_query import get_beam_summary
 from ..DataManager import dump, load_config, unix_to_iso
 
 
@@ -54,6 +55,8 @@ def CRS_blob_maker(run, sql_format=False):
         if sql_format:
             output.append(info)
         else:
+            info['beam_summary'] = get_beam_summary(info['start_time'],
+                                                    info['end_time'])
             output[subrun] = info
 
     start_subrun, end_subrun = 1, len(output)
