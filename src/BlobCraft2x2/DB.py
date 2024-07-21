@@ -183,6 +183,11 @@ class SQLiteDBManager:
         subruns = {}
         for row in subruns_data:
             subrun_info = dict(zip(subrun_columns, row))
+
+            # assume that any subrun with an invalid timestamp is "bad"
+            if (subrun_info[start] in [0, -1]) or (subrun_info[end] in [0, -1]):
+                continue
+
             subrun_number = subrun_info[subrun] %10000
             subrun_times = {
                 'start_time': datetime.fromtimestamp(int(subrun_info[start]), tz=chicago_tz).isoformat(),
