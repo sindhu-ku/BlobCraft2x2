@@ -35,6 +35,7 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
         info['subrunstarttime'] = times['start_time']
         info['subrunfinishtime'] = times['end_time']
         info["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
+        info['run'] = run
         output[subrun] = info
 
     sqlite.close_connection()

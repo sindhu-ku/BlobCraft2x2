@@ -38,11 +38,14 @@ def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subr
             time_shift = None
 
         final_global_subrun_dict[new_global_subrun_id] = {
-            'run': times['run'],
+            'global_run': times['global_run'],
             'start_time': start_time.isoformat(),
             'end_time': end_time.isoformat(),
+            'crs_run': times['crs_run'],
             'crs_subrun': times['crs_subrun'],
+            'lrs_run': times['lrs_run'],
             'lrs_subrun': times['lrs_subrun'],
+            'mx2_run': times['mx2_run'],
             'mx2_subrun': times['mx2_subrun']
         }
         new_global_subrun_id += 1
@@ -64,11 +67,14 @@ def get_subrun_dict(run, morcs_start, morcs_end):
 
     subrun_info = []
     for subrun, times in crs_subrun_dict.items():
-        subrun_info.extend([(times['start_time'], 'crs', 'start', subrun), (times['end_time'], 'crs', 'end', subrun)])
+        subrun_info.extend([(times['start_time'], 'crs', 'start', times['run'], subrun),
+                            (times['end_time'], 'crs', 'end', times['run'], subrun)])
     for subrun, times in lrs_subrun_dict.items():
-        subrun_info.extend([(times['start_time'], 'lrs', 'start', subrun), (times['end_time'], 'lrs', 'end', subrun)])
+        subrun_info.extend([(times['start_time'], 'lrs', 'start', times['run'], subrun),
+                            (times['end_time'], 'lrs', 'end', times['run'], subrun)])
     for subrun, times in mx2_subrun_dict.items():
-        subrun_info.extend([(times['start_time'], 'mx2', 'start', subrun), (times['end_time'], 'mx2', 'end', subrun)])
+        subrun_info.extend([(times['start_time'], 'mx2', 'start', times['run'], subrun),
+                            (times['end_time'], 'mx2', 'end', times['run'], subrun)])
 
     subrun_info.sort()  # Sort subrun_info by time
 
@@ -76,38 +82,35 @@ def get_subrun_dict(run, morcs_start, morcs_end):
     first_global_subrun = run * shift_subrun
     global_subrun = first_global_subrun - 1
     # crs_running, lrs_running, mx2_running = False, False, False
-    now_running = {'crs': None,
-                   'lrs': None,
-                   'mx2': None}
+    now_running = {'crs': (None, None),
+                   'lrs': (None, None),
+                   'mx2': (None, None)}
     # current_start_time = None
 
-    def update_global_subrun_dict(start_time, crs_subrun=None, lrs_subrun=None, mx2_subrun=None):
-        global_subrun_dict[global_subrun] = {
-            'run': run,
-            'start_time': start_time,
-            'end_time': None,
-            'crs_subrun': crs_subrun,
-            'lrs_subrun': lrs_subrun,
-            'mx2_subrun': mx2_subrun
-        }
-
-    for i, (subrun_time, system, subrun_type, subrun) in enumerate(subrun_info):
+    for i, (subrun_time, system, subrun_type, run, subrun) in enumerate(subrun_info):
         global_subrun = first_global_subrun + i
         if subrun_type == 'start':
-            now_running[system] = subrun
+            now_running[system] = (run, subrun)
         elif subrun_type == 'end':
             # if subrun_time == global_subrun_dict[global_subrun]['end_time']:
             #     global_subrun -= 1
             #     continue
-            now_running[system] = None
+            now_running[system] = (None, None)
 
         if global_subrun != first_global_subrun:
             global_subrun_dict[global_subrun - 1]['end_time'] = subrun_time
 
-        update_global_subrun_dict(subrun_time,
-                                  now_running['crs'],
-                                  now_running['lrs'],
-                                  now_running['mx2'])
+        global_subrun_dict[global_subrun] = {
+            'global_run': run,
+            'start_time': subrun_time,
+            'end_time': None,
+            'crs_run': now_running['crs'][0],
+            'crs_subrun': now_running['crs'][1],
+            'lrs_run': now_running['lrs'][0],
+            'lrs_subrun': now_running['lrs'][1],
+            'mx2_run': now_running['mx2'][0],
+            'mx2_subrun': now_running['mx2'][1],
+        }
 
     if global_subrun in global_subrun_dict and global_subrun_dict[global_subrun]['end_time'] is None:
         last_crs_end_time = max(crs_subrun_dict[subrun]['end_time'] for subrun in crs_subrun_dict)
@@ -167,11 +170,11 @@ def main():
         filename =  f'Runsdb_run_{args.run}_{args.start}_{args.end}'
 
     #dump summary into sqlite db
-    dump(subrun_dict, filename=filename, format='sqlite-global', tablename='Global_subrun_info')
-    # dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary')
-    dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', run=args.run)
-    dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', run=args.run)
-    dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', run=args.run)
+    dump(subrun_dict, filename=filename, format='sqlite-global', tablename='Global_subrun_info', is_global_subrun=True)
+    # dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary', global_run=args.run, is_global_subrun=True)
+    dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', global_run=args.run)
+    dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', global_run=args.run)
+    dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
 
 
     query_end = datetime.now()

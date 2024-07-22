@@ -191,6 +191,7 @@ class SQLiteDBManager:
 
             subrun_number = subrun_info[subrun] %10000
             subrun_times = {
+                'run': self.run,
                 'start_time': datetime.fromtimestamp(int(subrun_info[start]), tz=chicago_tz).isoformat(),
                 'end_time': datetime.fromtimestamp(int(subrun_info[end]), tz=chicago_tz).isoformat()
             }
@@ -215,6 +216,8 @@ class SQLiteDBManager:
     def create_table(self, table_name, schema, is_global_subrun=False):
         columns = []
         for col, col_type in schema.items():
+            if col.lower() == 'run':
+                continue
             if any(issubclass(col_type, c) for c in [int, np.integer]):
                 col_type = "INTEGER"
             elif any(issubclass(col_type, c) for c in [float, np.floating]):
@@ -231,16 +234,16 @@ class SQLiteDBManager:
             key_str = 'PRIMARY KEY (run, subrun)'
         self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({key_cols}, {columns_str}, {key_str})")
 
-    def insert_data(self, table_name, data, run=None, is_global_subrun=False):
+    def insert_data(self, table_name, data, global_run=None, is_global_subrun=False):
         # TODO: Add global_run argument, use it below
         for subrun, details in data.items():
             flat_details = {}
             if is_global_subrun:
                 flat_details['global_subrun'] = subrun
             else:
-                flat_details['run'] = run
+                flat_details['run'] = details['run']
                 flat_details['subrun'] = subrun
-            flat_details['global_run'] = run
+            flat_details['global_run'] = global_run
 
             for key, value in details.items():
                 if isinstance(value, dict):
@@ -256,10 +259,10 @@ class SQLiteDBManager:
 
             self.cursor.execute(f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})", values)
 
-    def dump_data(self, data, table_name, run=None, is_global_subrun=False):
+    def dump_data(self, data, table_name, global_run=None, is_global_subrun=False):
         schema = self.extract_schema(data)
         self.create_table(table_name, schema, is_global_subrun=is_global_subrun)
-        self.insert_data(table_name, data, run=run, is_global_subrun=is_global_subrun)
+        self.insert_data(table_name, data, global_run=global_run, is_global_subrun=is_global_subrun)
         self.conn.commit()
 
     def close_connection(self):
