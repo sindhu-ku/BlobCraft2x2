@@ -63,12 +63,12 @@ def dump(data, filename, format='json', tablename='runsdb', run=None):
     if format == 'sqlite-global':
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
         schema = {
-            'morcs_run': 'INTEGER',
-            'start_time': 'TEXT',
-            'end_time': 'TEXT',
-            'crs_subrun': 'TEXT',
-            'lrs_subrun': 'TEXT',
-            'mx2_subrun': 'TEXT'
+            'morcs_run': int,
+            'start_time': str,
+            'end_time': str,
+            'crs_subrun': int,
+            'lrs_subrun': int,
+            'mx2_subrun': int
         }
         sqlite_manager.create_table(tablename, schema)
 
