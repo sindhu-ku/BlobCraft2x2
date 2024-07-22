@@ -214,9 +214,9 @@ class SQLiteDBManager:
     def create_table(self, table_name, schema):
         columns = []
         for col, col_type in schema.items():
-            if col_type == int:
+            if any(issubclass(col_type, c) for c in [int, np.integer]):
                 col_type = "INTEGER"
-            elif col_type == float:
+            elif any(issubclass(col_type, c) for c in [float, np.floating]):
                 col_type = "REAL"
             else:
                 col_type = "TEXT"
