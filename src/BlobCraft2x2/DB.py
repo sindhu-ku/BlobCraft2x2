@@ -222,7 +222,7 @@ class SQLiteDBManager:
                 col_type = "TEXT"
             columns.append(f"{col} {col_type}")
         columns_str = ", ".join(columns)
-        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (subrun TEXT PRIMARY KEY, {columns_str})")
+        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (subrun INTEGER, {columns_str})")
 
     def insert_data(self, table_name, data):
         for subrun, details in data.items():
