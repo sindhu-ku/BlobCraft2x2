@@ -45,7 +45,7 @@ def CRS_blob_maker(run, sql_format=False):
             if sql_format:
                 info['subrun'] = subrun
 
-            info['morcs_run'] = run
+            info['global_run'] = run
             info['start_time_unix'] = start_time
             info['end_time_unix'] = end_time
             info['start_time'] = unix_to_iso(start_time);

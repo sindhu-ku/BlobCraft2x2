@@ -57,24 +57,25 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
 
-def dump(data, filename, format='json', tablename='runsdb', run=None):
+def dump(data, filename, format='json', tablename='runsdb', run=None,
+         is_global_subrun=False):
     if not data:
         return
     if format == 'sqlite-global':
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
         schema = {
-            'morcs_run': int,
+            'global_run': int,
             'start_time': str,
             'end_time': str,
             'crs_subrun': int,
             'lrs_subrun': int,
             'mx2_subrun': int
         }
-        sqlite_manager.create_table(tablename, schema)
+        sqlite_manager.create_table(tablename, schema, is_global_subrun=is_global_subrun)
 
         global_subrun_data = {
             str(global_subrun): {
-                'morcs_run': info['run'],
+                'global_run': info['run'],
                 'start_time': info['start_time'],
                 'end_time': info['end_time'],
                 'crs_subrun': info['crs_subrun'],
@@ -84,7 +85,7 @@ def dump(data, filename, format='json', tablename='runsdb', run=None):
             for global_subrun, info in data.items()
         }
 
-        sqlite_manager.insert_data(tablename, global_subrun_data)
+        sqlite_manager.insert_data(tablename, global_subrun_data, run=run, is_global_subrun=is_global_subrun)
         sqlite_manager.conn.commit()
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")
@@ -92,9 +93,9 @@ def dump(data, filename, format='json', tablename='runsdb', run=None):
     elif format=='sqlite':
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
         if run is not None:
-            data = {k: {'morcs_run': run, **v}
+            data = {k: {'global_run': run, **v}
                     for k, v in data.items()}
-        sqlite_manager.dump_data(data, tablename)
+        sqlite_manager.dump_data(data, tablename, run=run, is_global_subrun=is_global_subrun)
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")
     elif format=='json':
