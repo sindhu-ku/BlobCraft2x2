@@ -41,6 +41,7 @@ def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subr
             'global_run': times['global_run'],
             'start_time': start_time.isoformat(),
             'end_time': end_time.isoformat(),
+            'duration': str(end_time - start_time),
             'crs_run': times['crs_run'],
             'crs_subrun': times['crs_subrun'],
             'lrs_run': times['lrs_run'],
