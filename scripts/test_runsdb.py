@@ -21,21 +21,18 @@ subrun_timediff=5 #seconds
 def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subruns
     final_global_subrun_dict = {}
     new_global_subrun_id = run * shift_subrun
-    time_shift = None
+    time_shift = timedelta(seconds=0)
     for old_id, times in sorted(global_subrun_dict.items()):
         start_time = datetime.fromisoformat(times['start_time'])
         end_time = datetime.fromisoformat(times['end_time'])
         duration = (end_time - start_time).total_seconds()
-        if duration == 0: continue
-        if times['crs_subrun'] is None or times['lrs_subrun'] is None \
-           or times['mx2_subrun'] is None:
-            if duration < subrun_timediff:
-                time_shift = timedelta(seconds=duration)
-                continue
 
-        if time_shift is not None:
-            start_time = start_time - time_shift
-            time_shift = None
+        if duration < subrun_timediff:
+            time_shift += timedelta(seconds=duration)
+            continue
+
+        start_time = start_time - time_shift
+        time_shift = timedelta(seconds=0)
 
         final_global_subrun_dict[new_global_subrun_id] = {
             'global_run': times['global_run'],
