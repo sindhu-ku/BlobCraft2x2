@@ -27,6 +27,9 @@ def parse_datetime(date_str, is_start):
 def unix_to_iso(unix_time):
     return datetime.fromtimestamp(unix_time, tz=chicago_tz).isoformat()
 
+def iso_to_unix(iso_time):
+    return datetime.fromisoformat(iso_time).timestamp()
+
 def clean_subrun_dict(subrun_dict, start, end):
     cleaned_subrun_dict = {}
     subrun_info = sorted(subrun_dict.keys())
@@ -67,6 +70,8 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
         global_subrun_data = {
             global_subrun: {
                 'global_run': info['global_run'],
+                'start_time_unix': iso_to_unix(info['start_time']),
+                'end_time_unix': iso_to_unix(info['end_time']),
                 'start_time': info['start_time'],
                 'end_time': info['end_time'],
                 'duration': info['duration'],
