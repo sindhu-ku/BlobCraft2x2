@@ -98,6 +98,17 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
         if global_run is not None:
             data = {k: {'global_run': global_run, **v}
                     for k, v in data.items()}
+        for k in data:
+            start_time = datetime.fromtimestamp(data[k]['start_time_unix']) # type: ignore
+            end_time = datetime.fromtimestamp(data[k]['end_time_unix'])     # type: ignore
+            duration = end_time - start_time
+            data[k] = {**({'global_run': global_run} if global_run is not None else {}),
+                       'start_time_unix': data[k]['start_time_unix'],
+                       'end_time_unix': data[k]['end_time_unix'],
+                       'start_time': start_time.isoformat(),
+                       'end_time': end_time.isoformat(),
+                       'duration': str(duration),
+                       **data[k]}
         sqlite_manager.dump_data(data, tablename, global_run=global_run, is_global_subrun=is_global_subrun)
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")
