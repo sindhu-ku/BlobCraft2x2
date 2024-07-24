@@ -62,23 +62,10 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
     if not data:
         return
     if format == 'sqlite-global':
-        sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
-        schema = {
-            'global_run': int,
-            'start_time': str,
-            'end_time': str,
-            'duration': str,
-            'crs_run': int,
-            'crs_subrun': int,
-            'lrs_run': int,
-            'lrs_subrun': int,
-            'mx2_run': int,
-            'mx2_subrun': int
-        }
-        sqlite_manager.create_table(tablename, schema, is_global_subrun=is_global_subrun)
-
+        assert is_global_subrun
+        # Define final column ordering here
         global_subrun_data = {
-            str(global_subrun): {
+            global_subrun: {
                 'global_run': info['global_run'],
                 'start_time': info['start_time'],
                 'end_time': info['end_time'],
@@ -92,8 +79,11 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
             }
             for global_subrun, info in data.items()
         }
-
-        sqlite_manager.insert_data(tablename, global_subrun_data, global_run=global_run, is_global_subrun=is_global_subrun)
+        sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
+        schema = sqlite_manager.extract_schema(global_subrun_data)
+        sqlite_manager.create_table(tablename, schema, is_global_subrun=True)
+        sqlite_manager.insert_data(tablename, global_subrun_data,
+                                   global_run=global_run, is_global_subrun=True)
         sqlite_manager.conn.commit()
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")

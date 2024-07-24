@@ -35,16 +35,10 @@ def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subr
         time_shift = timedelta(seconds=0)
 
         final_global_subrun_dict[new_global_subrun_id] = {
-            'global_run': times['global_run'],
+            **times,
             'start_time': start_time.isoformat(),
             'end_time': end_time.isoformat(),
             'duration': str(end_time - start_time),
-            'crs_run': times['crs_run'],
-            'crs_subrun': times['crs_subrun'],
-            'lrs_run': times['lrs_run'],
-            'lrs_subrun': times['lrs_subrun'],
-            'mx2_run': times['mx2_run'],
-            'mx2_subrun': times['mx2_subrun']
         }
         new_global_subrun_id += 1
     return final_global_subrun_dict

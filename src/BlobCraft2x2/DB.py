@@ -235,7 +235,6 @@ class SQLiteDBManager:
         self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({key_cols}, {columns_str}, {key_str})")
 
     def insert_data(self, table_name, data, global_run=None, is_global_subrun=False):
-        # TODO: Add global_run argument, use it below
         for subrun, details in data.items():
             flat_details = {}
             if is_global_subrun:
