@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+from pathlib import Path
+
 from ..DB import SQLiteDBManager
 from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
 from ..Beam.beam_query import get_beam_summary
@@ -38,6 +40,8 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
         del info['subrunfinishtime']
         info["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         info['run'] = run
+        info['filename'] = Path(info['logfilename']) \
+            .name.removesuffix('Controller0Log.txt') + 'RawData.dat'
         output[subrun] = info
 
     sqlite.close_connection()

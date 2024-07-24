@@ -104,12 +104,14 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
             end_time = datetime.fromtimestamp(data[k]['end_time_unix'],
                                               tz=chicago_tz) # type: ignore
             duration = end_time - start_time
+            # Define final column ordering here
             data[k] = {**({'global_run': global_run} if global_run is not None else {}),
                        'start_time_unix': data[k]['start_time_unix'],
                        'end_time_unix': data[k]['end_time_unix'],
                        'start_time': start_time.isoformat(),
                        'end_time': end_time.isoformat(),
                        'duration': str(duration),
+                       'filename': data[k]['filename'],
                        **data[k]}
         sqlite_manager.dump_data(data, tablename, global_run=global_run, is_global_subrun=is_global_subrun)
         sqlite_manager.close_connection()

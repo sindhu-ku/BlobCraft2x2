@@ -50,6 +50,7 @@ def CRS_blob_maker(run, sql_format=False):
             info['end_time_unix'] = end_time
             info['start_time'] = unix_to_iso(start_time);
             info['end_time'] = unix_to_iso(end_time);
+            info['filename'] = path.name
             info['msg_rate'] = msg_rate
 
         if sql_format:
