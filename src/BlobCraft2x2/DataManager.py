@@ -99,8 +99,10 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
             data = {k: {'global_run': global_run, **v}
                     for k, v in data.items()}
         for k in data:
-            start_time = datetime.fromtimestamp(data[k]['start_time_unix']) # type: ignore
-            end_time = datetime.fromtimestamp(data[k]['end_time_unix'])     # type: ignore
+            start_time = datetime.fromtimestamp(data[k]['start_time_unix'],
+                                                tz=chicago_tz) # type: ignore
+            end_time = datetime.fromtimestamp(data[k]['end_time_unix'],
+                                              tz=chicago_tz) # type: ignore
             duration = end_time - start_time
             data[k] = {**({'global_run': global_run} if global_run is not None else {}),
                        'start_time_unix': data[k]['start_time_unix'],
