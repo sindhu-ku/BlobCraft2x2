@@ -111,7 +111,7 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
                        'start_time': start_time.isoformat(),
                        'end_time': end_time.isoformat(),
                        'duration': str(duration),
-                       'filename': data[k]['filename'],
+                       **({'filename': data[k]['filename']} if 'filename' in data[k] else {}),
                        **data[k]}
         sqlite_manager.dump_data(data, tablename, global_run=global_run, is_global_subrun=is_global_subrun)
         sqlite_manager.close_connection()

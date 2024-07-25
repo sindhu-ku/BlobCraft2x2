@@ -120,6 +120,9 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
                 beam_data = {"beam_summary": get_beam_summary(start_t, end_t)}
                 SC_data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
                 data[subrun] = {**SC_data, **beam_data}
+                # dump() currently expects unix timestamps
+                data[subrun]['start_time_unix'] = iso_to_unix(times['start_time'])
+                data[subrun]['end_time_unix'] = iso_to_unix(times['end_time'])
             if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
 
 
