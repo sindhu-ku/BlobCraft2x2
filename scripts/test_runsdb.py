@@ -177,7 +177,7 @@ def main():
         filename =  f'Runsdb_run_{args.run}_{args.start}_{args.end}'
 
     #dump summary into sqlite db
-    dump(subrun_dict, filename=filename, format='sqlite-global', tablename='Global_subrun_info', is_global_subrun=True)
+    dump(subrun_dict, filename=filename, format='sqlite-global', tablename='All_global_subruns', is_global_subrun=True)
     dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary', global_run=args.run, is_global_subrun=True)
     dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', global_run=args.run)
     dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', global_run=args.run)
