@@ -178,10 +178,10 @@ def main():
 
     #dump summary into sqlite db
     dump(subrun_dict, filename=filename, format='sqlite-global', tablename='All_global_subruns', is_global_subrun=True)
-    dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary', global_run=args.run, is_global_subrun=True)
     dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', global_run=args.run)
     dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', global_run=args.run)
     dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
+    dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary', global_run=args.run, is_global_subrun=True)
     # HACK
     if args.run == 50005:
         dump(Mx2_summary2, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
