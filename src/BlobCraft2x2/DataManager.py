@@ -27,6 +27,9 @@ def parse_datetime(date_str, is_start):
 def unix_to_iso(unix_time):
     return datetime.fromtimestamp(unix_time, tz=chicago_tz).isoformat()
 
+def iso_to_unix(iso_time):
+    return datetime.fromisoformat(iso_time).timestamp()
+
 def clean_subrun_dict(subrun_dict, start, end):
     cleaned_subrun_dict = {}
     subrun_info = sorted(subrun_dict.keys())
@@ -57,39 +60,60 @@ def load_config(config_file):
     with open(config_file, 'r') as f:
         return yaml.safe_load(f)
 
-def dump(data, filename, format='json', tablename='runsdb'):
+def dump(data, filename, format='json', tablename='runsdb', global_run=None,
+         is_global_subrun=False):
     if not data:
         return
     if format == 'sqlite-global':
-        sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
-        schema = {
-            'morcs_run': 'INTEGER',
-            'start_time': 'TEXT',
-            'end_time': 'TEXT',
-            'lrs_subrun': 'TEXT',
-            'mx2_subrun': 'TEXT'
-        }
-        sqlite_manager.create_table(tablename, schema)
-
+        assert is_global_subrun
+        # Define final column ordering here
         global_subrun_data = {
-            str(global_subrun): {
-                'morcs_run': info['run'],
+            global_subrun: {
+                'global_run': info['global_run'],
+                'start_time_unix': iso_to_unix(info['start_time']),
+                'end_time_unix': iso_to_unix(info['end_time']),
                 'start_time': info['start_time'],
                 'end_time': info['end_time'],
+                'duration': info['duration'],
+                'crs_run': info['crs_run'],
+                'crs_subrun': info['crs_subrun'],
+                'lrs_run': info['lrs_run'],
                 'lrs_subrun': info['lrs_subrun'],
+                'mx2_run': info['mx2_run'],
                 'mx2_subrun': info['mx2_subrun']
             }
             for global_subrun, info in data.items()
         }
-
-        sqlite_manager.insert_data(tablename, global_subrun_data)
+        sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
+        schema = sqlite_manager.extract_schema(global_subrun_data)
+        sqlite_manager.create_table(tablename, schema, is_global_subrun=True)
+        sqlite_manager.insert_data(tablename, global_subrun_data,
+                                   global_run=global_run, is_global_subrun=True)
         sqlite_manager.conn.commit()
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")
 
     elif format=='sqlite':
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
-        sqlite_manager.dump_data(data, tablename)
+        if global_run is not None:
+            data = {k: {'global_run': global_run, **v}
+                    for k, v in data.items()}
+        for k in data:
+            start_time = datetime.fromtimestamp(data[k]['start_time_unix'],
+                                                tz=chicago_tz) # type: ignore
+            end_time = datetime.fromtimestamp(data[k]['end_time_unix'],
+                                              tz=chicago_tz) # type: ignore
+            duration = end_time - start_time
+            # Define final column ordering here
+            data[k] = {**({'global_run': global_run} if global_run is not None else {}),
+                       'start_time_unix': data[k]['start_time_unix'],
+                       'end_time_unix': data[k]['end_time_unix'],
+                       'start_time': start_time.isoformat(),
+                       'end_time': end_time.isoformat(),
+                       'duration': str(duration),
+                       **({'filename': data[k]['filename']} if 'filename' in data[k] else {}),
+                       **data[k]}
+        sqlite_manager.dump_data(data, tablename, global_run=global_run, is_global_subrun=is_global_subrun)
         sqlite_manager.close_connection()
         print(f"Dumping table {tablename} to sqlite database file {filename}.db")
     elif format=='json':

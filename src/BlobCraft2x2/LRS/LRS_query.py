@@ -35,12 +35,13 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
 
         if not data:
             continue
-        unix_time_columns = {'first_event_tai', 'last_event_tai'}
+
+        # unix_time_columns = {'first_event_tai', 'last_event_tai'}
 
         for row in data:
-            row['start_time_unix'] = times['start_time']
-            row['end_time_unix'] = times['end_time']
-            row.update({col: unix_to_iso(row[col]) for col in unix_time_columns if col in row})
+            row['start_time'] = times['start_time']
+            row['end_time'] = times['end_time']
+            # row.update({col: unix_to_iso(row[col]) for col in unix_time_columns if col in row})
 
         moas_filename = data[0]["active_moas"] #moas filename is stored here which can then be used to get moas info (especially config id)
         if not moas_filename:
@@ -57,7 +58,7 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         data[0].update(moas_dict[0])
         data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         output[subrun] = data[0]
-        output[subrun]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
+        output[subrun]['run'] = run
 
         if not dump_all_data: continue
 
@@ -78,9 +79,11 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
     if not any(output.values()):
         print(f"No data found for run number {run} in the LRS database")
 
-    else:
-        if dump_all_data: dump(output, f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
-        else: return output
+    elif dump_all_data:
+        fname = f'LRS_all_ucondb_measurements_run-{run}_{start_time}_{end_time}'
+        dump(output, fname)
+
+    return output
 
 
 def main():

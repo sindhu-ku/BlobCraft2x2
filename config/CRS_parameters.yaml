@@ -1,0 +1,4 @@
+filename: "config/crs_runs.db"
+
+# for generating the above
+data_dir: "/data/beam/july8_2024/nominal_hv"

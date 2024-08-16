@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+from pathlib import Path
+
 from ..DB import SQLiteDBManager
 from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
 from ..Beam.beam_query import get_beam_summary
@@ -32,9 +34,14 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
             continue
 
         info = {key: val for key, val in data[0].items() if key != 'runsubrun'}
-        info['subrunstarttime'] = times['start_time']
-        info['subrunfinishtime'] = times['end_time']
+        info['start_time_unix'] = info['subrunstarttime']
+        info['end_time_unix'] = info['subrunfinishtime']
+        del info['subrunstarttime']
+        del info['subrunfinishtime']
         info["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
+        info['run'] = run
+        info['filename'] = Path(info['logfilename']) \
+            .name.removesuffix('Controller0Log.txt') + 'RawData.dat'
         output[subrun] = info
 
     sqlite.close_connection()
@@ -42,9 +49,10 @@ def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
     if not any(output.values()):
         print(f"No data found for run number {run} in the Mx2 database")
 
-    else:
-        if dump_all_data: dump(output, f'Mx2_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
-        else: return output
+    elif dump_all_data:
+        dump(output, f'Mx2_all_ucondb_measurements_run-{run}_{start_time}_{end_time}')
+
+    return output
 
 def main():
     parser = argparse.ArgumentParser(description="Query Mx2 SQLite database and dump data to JSON file.")

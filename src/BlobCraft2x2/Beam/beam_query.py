@@ -30,6 +30,7 @@ def get_POT(start, end, total=False):
         dump(pot_timseries_data, f"BeamPOT_{start}_{end}")
 
 def get_beam_summary(start, end, dump_data=False):
+    print(f'Getting beam summary: {start} to {end}')
     pot, first_time, last_time = get_POT(start, end, total=True)
     beam_data =  {
                     "Total_POT": pot,

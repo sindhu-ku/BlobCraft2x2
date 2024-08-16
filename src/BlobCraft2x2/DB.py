@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import sqlalchemy as alc
 import sqlite3
 from influxdb import InfluxDBClient
+import numpy as np
 import requests
 import pandas as pd
 
@@ -183,10 +184,16 @@ class SQLiteDBManager:
         subruns = {}
         for row in subruns_data:
             subrun_info = dict(zip(subrun_columns, row))
+
+            # assume that any subrun with an invalid timestamp is "bad"
+            if (subrun_info[start] in [0, -1]) or (subrun_info[end] in [0, -1]):
+                continue
+
             subrun_number = subrun_info[subrun] %10000
             subrun_times = {
-                'start_time': datetime.fromtimestamp(subrun_info[start], tz=chicago_tz).isoformat(),
-                'end_time': datetime.fromtimestamp(subrun_info[end], tz=chicago_tz).isoformat()
+                'run': self.run,
+                'start_time': datetime.fromtimestamp(int(subrun_info[start]), tz=chicago_tz).isoformat(),
+                'end_time': datetime.fromtimestamp(int(subrun_info[end]), tz=chicago_tz).isoformat()
             }
             subruns[subrun_number] = subrun_times
 
@@ -206,22 +213,37 @@ class SQLiteDBManager:
                         schema[key] = type(value)
         return schema
 
-    def create_table(self, table_name, schema):
+    def create_table(self, table_name, schema, is_global_subrun=False):
         columns = []
         for col, col_type in schema.items():
-            if col_type == int:
+            if col.lower() == 'run':
+                continue
+            if any(issubclass(col_type, c) for c in [int, np.integer]):
                 col_type = "INTEGER"
-            elif col_type == float:
+            elif any(issubclass(col_type, c) for c in [float, np.floating]):
                 col_type = "REAL"
             else:
                 col_type = "TEXT"
             columns.append(f"{col} {col_type}")
         columns_str = ", ".join(columns)
-        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} (subrun TEXT PRIMARY KEY, {columns_str})")
+        if is_global_subrun:
+            key_cols = 'global_subrun INTEGER'
+            key_str = 'PRIMARY KEY (global_subrun)'
+        else:
+            key_cols = 'run INTEGER, subrun INTEGER'
+            key_str = 'PRIMARY KEY (run, subrun)'
+        self.cursor.execute(f"CREATE TABLE IF NOT EXISTS {table_name} ({key_cols}, {columns_str}, {key_str})")
 
-    def insert_data(self, table_name, data):
+    def insert_data(self, table_name, data, global_run=None, is_global_subrun=False):
         for subrun, details in data.items():
-            flat_details = {"subrun": subrun}
+            flat_details = {}
+            if is_global_subrun:
+                flat_details['global_subrun'] = subrun
+            else:
+                flat_details['run'] = details['run']
+                flat_details['subrun'] = subrun
+            flat_details['global_run'] = global_run
+
             for key, value in details.items():
                 if isinstance(value, dict):
                     for subkey, subvalue in value.items():
@@ -236,10 +258,10 @@ class SQLiteDBManager:
 
             self.cursor.execute(f"INSERT OR REPLACE INTO {table_name} ({columns}) VALUES ({placeholders})", values)
 
-    def dump_data(self, data, table_name):
+    def dump_data(self, data, table_name, global_run=None, is_global_subrun=False):
         schema = self.extract_schema(data)
-        self.create_table(table_name, schema)
-        self.insert_data(table_name, data)
+        self.create_table(table_name, schema, is_global_subrun=is_global_subrun)
+        self.insert_data(table_name, data, global_run=global_run, is_global_subrun=is_global_subrun)
         self.conn.commit()
 
     def close_connection(self):
