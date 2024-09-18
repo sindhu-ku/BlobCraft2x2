@@ -20,6 +20,7 @@ pip3 install .
 python -m venv BlobCraft2x2.venv
 source BlobCraft2x2.venv/bin/activate
 pip install --upgrade pip setuptools wheel
+pip3 install .
 ```
 ### Slow/ detector controls
 
