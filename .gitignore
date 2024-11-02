@@ -3,6 +3,7 @@ __pycache__
 *.png
 *build
 *.db
+*.sqlite
 *credentials.yaml
 *.key
 *.venv
