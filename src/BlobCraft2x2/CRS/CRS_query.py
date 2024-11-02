@@ -2,6 +2,7 @@
 
 import argparse
 import io
+import json
 from pathlib import Path
 import tarfile
 
@@ -13,15 +14,24 @@ from ..DataManager import dump, unix_to_iso
 from .. import CRS_config, IFbeam_config
 
 
-def get_config_data(h5path):
-    with h5py.File(h5path) as h5f:
-        tar_bytes = np.array(h5f['daq_configs']).data
-        fileobj = io.BytesIO(tar_bytes)
-    return tarfile.open(fileobj=fileobj)
-
-
 def get_daq_config(f: h5py.File):
-    return {}
+    stream = io.BytesIO(np.array(f['daq_configs']).data)
+    with tarfile.open(fileobj=stream) as tarf:
+        rootname = tarf.getmembers()[0].name
+        chip_id ='1-1-11'
+        path = f'{rootname}/asic_configs/config_{chip_id}.json'
+        config = json.load(tarf.extractfile(path))
+
+        keys = ['threshold_global',
+                'ref_current_trim',
+                'vref_dac',
+                'vcm_dac',
+                'adc_hold_delay',
+                'enable_periodic_reset',
+                'enable_rolling_periodic_reset',
+                'periodic_reset_cycles']
+
+        return {k: config[k] for k in keys}
 
 def CRS_blob_maker(run):
     print(f"\n----------------------------------------Fetching CRS data for the run {run}----------------------------------------")
