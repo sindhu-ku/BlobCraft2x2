@@ -20,16 +20,17 @@ def get_config_data(h5path):
     return tarfile.open(fileobj=fileobj)
 
 
-def CRS_blob_maker(run, sql_format=False):
+def get_daq_config(f: h5py.File):
+    return {}
+
+def CRS_blob_maker(run):
     print(f"\n----------------------------------------Fetching CRS data for the run {run}----------------------------------------")
 
     config = CRS_config
     data_dir = config['data_dir']
 
-    if sql_format:
-        output = []
-    else:
-        output = {}
+    output = {}                 # for CRS_summary
+    output_sql = []             # for All_global_subruns
 
     files = Path(data_dir).rglob(f'binary-{run:07d}-*.h5')
 
@@ -41,10 +42,6 @@ def CRS_blob_maker(run, sql_format=False):
         with h5py.File(path) as f:
             start_time = f['meta'].attrs['created']
             end_time = f['meta'].attrs['modified']
-            msg_rate = len(f['msgs']) / (end_time - start_time)
-
-            if sql_format:
-                info['subrun'] = subrun
 
             info['run'] = run
             info['start_time_unix'] = start_time
@@ -52,36 +49,41 @@ def CRS_blob_maker(run, sql_format=False):
             info['start_time'] = unix_to_iso(start_time);
             info['end_time'] = unix_to_iso(end_time);
             info['filename'] = path.name
+
+            # SQL format is just used for generating the global subrun table
+            # so we keep it simple
+            output_sql.append({'subrun': subrun, **info})
+
+            msg_rate = len(f['msgs']) / (end_time - start_time)
             info['msg_rate'] = msg_rate
 
-        if sql_format:
-            output.append(info)
-        else:
+            info.update(get_daq_config(f))
+
             if IFbeam_config['enabled']:
                 info['beam_summary'] = get_beam_summary(info['start_time'],
                                                         info['end_time'])
+
             output[subrun] = info
 
     start_subrun, end_subrun = 1, len(output)
-    start_str = output[0]['start_time'] if sql_format else output[start_subrun]['start_time']
-    end_str = output[-1]['end_time'] if sql_format else output[end_subrun]['end_time']
+    start_str = output[start_subrun]['start_time']
+    end_str = output[end_subrun]['end_time']
 
     fname = f'CRS_all_ucondb_measurements_run-{run}-{start_str}_{end_str}'
-    if sql_format:
-        fname += '.SQL'
 
     dump(output, fname)
+    dump(output_sql, fname+'.SQL')
     return output
 
 
 def main():
     parser = argparse.ArgumentParser(description="Query SQLite database and dump data to JSON file.")
     parser.add_argument("--run", type=int, required=True, help="Run number")
-    parser.add_argument('--sql-format', action='store_true')
     args = parser.parse_args()
 
-    CRS_blob_maker(args.run, sql_format=args.sql_format)
+    CRS_blob_maker(args.run)
 
 
 if __name__ == "__main__":
     main()
+

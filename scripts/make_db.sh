@@ -5,10 +5,7 @@ set -o pipefail
 
 runno=$1; shift
 
-# for All_global_subruns:
-CRS_query --run $runno
-# for CRS_summary:
-CRS_query --sql-format --run $runno
+CRS_query --run "$runno"
 
 rm -f config/crs_runs.db
 scripts/json2sqlite.py -i ./CRS_*.SQL.json -o config/crs_runs.db
