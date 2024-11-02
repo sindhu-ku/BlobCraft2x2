@@ -50,7 +50,7 @@ def get_subrun_dict(run, morcs_start, morcs_end):
         data = sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition)
         return clean_subrun_dict(data, start=morcs_start, end=morcs_end)
 
-    crs_subrun_dict = load_subrun_data("config/CRS_parameters.yaml", 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
+    crs_subrun_dict = load_subrun_data("config/CRS_parameters.yaml", 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'run')
     lrs_subrun_dict = load_subrun_data("config/LRS_parameters.yaml", 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
     mx2_subrun_dict = load_subrun_data("config/Mx2_parameters.yaml", 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
     #Test example
