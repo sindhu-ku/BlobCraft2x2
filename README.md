@@ -22,6 +22,11 @@ source BlobCraft2x2.venv/bin/activate
 pip install --upgrade pip setuptools wheel
 pip3 install .
 ```
+
+Symlink the appropriate config directory:
+- For 2x2: `ln -s configs/2x2 config`
+- For FSD: `ln -s configs/FSD config`
+
 ### Slow/ detector controls
 
 Usage:

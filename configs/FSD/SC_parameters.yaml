@@ -1,0 +1,74 @@
+enabled: false
+
+influxdb:
+  # mpod_dict:  &mpod_dict
+  #   [["PACMAN&FANS", "VGAs", "RTDs"], [["voltage", "current", "channel_temperature"]]]
+  # crate_dict: &crate_dict
+  #   [["temperature", "electrical_params"], [["temperature"],[ "voltage_sense", "voltage_terminal", "current"]]]
+  #
+  # #use this dict to look for db names,  measurement names, or variable names. Format db: [measurment1, measurement2, ...], [[variables for measurement1], [variables for measurement2]..]
+  # #If the variables list is empty, it will automatically fetch all the variables in the measurement
+  # influx_SC_data_dict:
+  #   gizmo: [["resistance"], []]
+  #   module0_mpod0: *mpod_dict
+  #   module1_mpod0: *mpod_dict
+  #   module2_mpod1: *mpod_dict
+  #   module3_mpod1: *mpod_dict
+  #   HVmonitoring: [["SPELLMAN_HV", "Raspi"], [["Voltage", "Current"], ["CH0", "CH1", "CH2", "CH3", "Temperature"]]]
+  #   VME_crate01: *crate_dict
+  #   VME_crate23: *crate_dict
+  #   ADC_crate: *crate_dict
+  #   pt100: [["temp"],[["value"]]] #RTD temp inside modules
+
+  #all databases inside influx
+  influx_SC_db:
+    - gizmo
+    - module0_mpod0
+    - module1_mpod0
+    - module2_mpod1
+    - module3_mpod1
+    - HVmonitoring
+    - VME_crate01
+    - VME_crate23
+    - ADC_crate
+    - pt100
+    - cryo_readonly
+    - lrs_monitor
+    - mx2_logs
+
+ #special dict for user readability
+  influx_SC_special_dict:
+    ground_impedance: ["gizmo", "resistance", ["resistance"]]
+    pick_off_voltages: ["HVmonitoring", "Raspi", ["CH1", "CH2", "CH3", "CH4"]]
+    set_voltage: ["HVmonitoring", "SPELLMAN_HV", ["Voltage"]]
+    oil_temperature: ["HVmonitoring", "Raspi", ["Temperature"]]
+    RTD_temperature: ["pt100", "temp", ["value"]]
+    cryostat_pressure: ["cryo_readonly", "PT-1069A", ["magnitude"]]
+    LAr_level_mm: ["cryo_readonly", "LT-1007A-RPi", ["magnitude"]]
+    O2_ppb: ["cryo_readonly", "AE-1015A", ["magnitude"]]
+
+  #Check https://github.com/DUNE/2x2_Slow_Controls/blob/main/Cryogenics/dictionary.json for other cryo measurements
+
+ #runsdb stuff
+  good_ground_impedance: 150 #ohms #threshold below which ground impedance is bad
+  drift_dist: 30.2 #centimeters
+  good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad.
+
+psql:
+  cryo_table_prefix: "sqlt_data_1"
+  purity_mon_table: "prm_table"
+
+  cryostat_tag_dict:
+    cryostat_pressure: "34"
+    LAr_level: "37"
+
+  purity_mon_variables:
+    electron_lifetime: "prm_lifetime"
+    impurities: "prm_impurities"
+    anode_peak: "prm_anodepeak"
+    cathode_peak: "prm_cathodepeak"
+    anode_time: "prm_anodetime"
+    cathode_time: "prm_cathodetime"
+    anode_hv: "prm_anode_hv"
+    cathode_hv: "prm_cathode_hv"
+    anodegrid_hv: "prm_anodegrid_hv"

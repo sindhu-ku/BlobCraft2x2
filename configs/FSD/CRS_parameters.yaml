@@ -1,0 +1,6 @@
+enabled: true
+
+filename: "config/crs_runs.db"
+
+# for generating the above
+data_dir: "/global/cfs/cdirs/dune/www/data/FSD/CRS/CRS/cosmics"
