@@ -5,8 +5,7 @@ import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
 from ..DataManager import *
-
-chicago_tz = ZoneInfo("America/Chicago")
+from .. import local_tz
 
 class SCUtilsGlobals:
     def __init__(self):
@@ -143,7 +142,7 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
                 "bad_values_percent": bad_LAr_per
             },
             "Purity_monitor": {
-                "last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
+                "last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(local_tz).isoformat(),
                 "electron_lifetime_ms": electron_lifetime[1]*1e3
             },
             "O2_ppb": {

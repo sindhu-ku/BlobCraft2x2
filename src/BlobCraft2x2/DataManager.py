@@ -9,23 +9,23 @@ from datetime import datetime, time
 import yaml
 from .DB import SQLiteDBManager
 from collections.abc import Mapping
+from . import local_tz
 
-chicago_tz =  ZoneInfo("America/Chicago")
 default_utc_time = "1969-12-31T18:00:00-06:00"
 
 def parse_datetime(date_str, is_start):
     dt = date_parser.parse(date_str)
     if not dt.tzinfo:
-        dt = dt.replace(tzinfo=chicago_tz)
+        dt = dt.replace(tzinfo=local_tz)
     if dt.hour == 0 and dt.minute == 0 and dt.second == 0 and dt.microsecond == 0:
         if is_start:
-            return datetime.combine(dt.date(), time.min, tzinfo=chicago_tz)
+            return datetime.combine(dt.date(), time.min, tzinfo=local_tz)
         else:
-            return datetime.combine(dt.date(), time.max, tzinfo=chicago_tz)
-    return dt.astimezone(chicago_tz)
+            return datetime.combine(dt.date(), time.max, tzinfo=local_tz)
+    return dt.astimezone(local_tz)
 
 def unix_to_iso(unix_time):
-    return datetime.fromtimestamp(unix_time, tz=chicago_tz).isoformat()
+    return datetime.fromtimestamp(unix_time, tz=local_tz).isoformat()
 
 def iso_to_unix(iso_time):
     return datetime.fromisoformat(iso_time).timestamp()
@@ -100,9 +100,9 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
                     for k, v in data.items()}
         for k in data:
             start_time = datetime.fromtimestamp(data[k]['start_time_unix'],
-                                                tz=chicago_tz) # type: ignore
+                                                tz=local_tz) # type: ignore
             end_time = datetime.fromtimestamp(data[k]['end_time_unix'],
-                                              tz=chicago_tz) # type: ignore
+                                              tz=local_tz) # type: ignore
             duration = end_time - start_time
             # Define final column ordering here
             data[k] = {**({'global_run': global_run} if global_run is not None else {}),
@@ -165,7 +165,7 @@ class DataManager:
 
         df["time"] = df["time"].apply(format_time)
         df["time"] = pd.to_datetime(df["time"], utc=True)
-        df["time"] = df["time"].dt.tz_convert(chicago_tz)
+        df["time"] = df["time"].dt.tz_convert(local_tz)
 
         if subsample_interval is not None:
             formatted_entries = self.subsample(df, subsample_interval=subsample_interval)
