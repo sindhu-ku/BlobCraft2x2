@@ -1,3 +1,5 @@
+enabled: true
+
 filename: "config/crs_runs.db"
 
 # for generating the above

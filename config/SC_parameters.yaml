@@ -1,3 +1,5 @@
+enabled: true
+
 influxdb:
   # mpod_dict:  &mpod_dict
   #   [["PACMAN&FANS", "VGAs", "RTDs"], [["voltage", "current", "channel_temperature"]]]
