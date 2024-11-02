@@ -9,7 +9,7 @@ from datetime import datetime, time
 import yaml
 from .DB import SQLiteDBManager
 from collections.abc import Mapping
-from . import local_tz
+from . import Mx2_config, local_tz
 
 default_utc_time = "1969-12-31T18:00:00-06:00"
 
@@ -63,8 +63,9 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
     if format == 'sqlite-global':
         assert is_global_subrun
         # Define final column ordering here
-        global_subrun_data = {
-            global_subrun: {
+        global_subrun_data = {}
+        for global_subrun, info in data.items():
+            global_subrun_data[global_subrun] = {
                 'global_run': info['global_run'],
                 'start_time_unix': iso_to_unix(info['start_time']),
                 'end_time_unix': iso_to_unix(info['end_time']),
@@ -75,11 +76,11 @@ def dump(data, filename, format='json', tablename='runsdb', global_run=None,
                 'crs_subrun': info['crs_subrun'],
                 'lrs_run': info['lrs_run'],
                 'lrs_subrun': info['lrs_subrun'],
-                'mx2_run': info['mx2_run'],
-                'mx2_subrun': info['mx2_subrun']
             }
-            for global_subrun, info in data.items()
-        }
+            if Mx2_config['enabled']:
+                global_subrun_data[global_subrun]['mx2_run'] = info['mx2_run']
+                global_subrun_data[global_subrun]['mx2_subrun'] = info['mx2_subrun']
+
         sqlite_manager = SQLiteDBManager(f'{filename}.db', run=-100)
         schema = sqlite_manager.extract_schema(global_subrun_data)
         sqlite_manager.create_table(tablename, schema, is_global_subrun=True)

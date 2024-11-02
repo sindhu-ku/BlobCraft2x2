@@ -52,17 +52,14 @@ def get_subrun_dict(run, morcs_start, morcs_end):
 
     crs_subrun_dict = load_subrun_data(CRS_config, 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'run')
     lrs_subrun_dict = load_subrun_data(LRS_config, 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
-    mx2_subrun_dict = load_subrun_data(Mx2_config, 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
-    #Test example
-    # lrs_subrun_dict = {0: {'start_time': '2024-07-08T10:46:46-05:00', 'end_time': '2024-07-08T10:47:47-05:00'}, 1: {'start_time': '2024-07-08T10:47:47-05:00', 'end_time': '2024-07-08T10:48:47-05:00'}, 2: {'start_time': '2024-07-08T10:48:47-05:00', 'end_time': '2024-07-08T10:49:47-05:00'}, 3: {'start_time': '2024-07-08T10:49:47-05:00', 'end_time': '2024-07-08T10:50:48-05:00'}, 4: {'start_time': '2024-07-08T10:50:48-05:00', 'end_time': '2024-07-08T10:51:48-05:00'}, 5: {'start_time': '202407-08T10:51:48-05:00', 'end_time': '2024-07-08T10:52:49-05:00'}, 6: {'start_time': '2024-07-08T10:52:49-05:00', 'end_time': '2024-07-08T10:53:50-05:00'}, 7: {'start_time': '2024-07-08T10:53:50-05:00', 'end_time': '2024-07-08T10:54:50-05:00'}, 8: {'start_time': '2024-07-08T10:54:50-05:00', 'end_time': '2024-07-08T10:55:51-05:00'}, 9: {'start_time': '2024-07-08T10:55:51-05:00', 'end_time': '2024-07-08T10:56:51-05:00'}, 10: {'start_time': '2024-07-08T10:56:51-05:00', 'end_time': '2024-0708T10:57:51-05:00'}, 11: {'start_time': '2024-07-08T10:57:51-05:00', 'end_time': '2024-07-08T10:58:52-05:00'}, 12: {'start_time': '2024-07-08T10:58:52-05:00', 'end_time': '2024-07-08T10:59:09-05:00'}}
-    # mx2_subrun_dict = {1: {'start_time': '2024-07-08T10:47:22-05:00', 'end_time': '2024-07-08T10:49:09-05:00'}, 2: {'start_time': '2024-07-08T10:49:09-05:00', 'end_time': '2024-07-08T10:59:15-05:00'}}
-
-    # HACK
-    # TODO: Key subrun dict on (run, subrun) instead of subrun
-    if run == 50005:
-        run = 50006
-        mx2_subrun_dict2 = load_subrun_data(Mx2_config, 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
-        run = 50005
+    if Mx2_config['enabled']:
+        mx2_subrun_dict = load_subrun_data(Mx2_config, 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
+        # HACK
+        # TODO: Key subrun dict on (run, subrun) instead of subrun
+        if run == 50005:
+            run = 50006
+            mx2_subrun_dict2 = load_subrun_data(Mx2_config, 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
+            run = 50005
 
     subrun_info = []
     for subrun, times in crs_subrun_dict.items():
@@ -71,14 +68,15 @@ def get_subrun_dict(run, morcs_start, morcs_end):
     for subrun, times in lrs_subrun_dict.items():
         subrun_info.extend([(times['start_time'], 'lrs', 'start', times['run'], subrun),
                             (times['end_time'], 'lrs', 'end', times['run'], subrun)])
-    for subrun, times in mx2_subrun_dict.items():
-        subrun_info.extend([(times['start_time'], 'mx2', 'start', times['run'], subrun),
-                            (times['end_time'], 'mx2', 'end', times['run'], subrun)])
-    # HACK
-    if run == 50005:
-        for subrun, times in mx2_subrun_dict2.items():
+    if Mx2_config['enabled']:
+        for subrun, times in mx2_subrun_dict.items():
             subrun_info.extend([(times['start_time'], 'mx2', 'start', times['run'], subrun),
                                 (times['end_time'], 'mx2', 'end', times['run'], subrun)])
+        # HACK
+        if run == 50005:
+            for subrun, times in mx2_subrun_dict2.items():
+                subrun_info.extend([(times['start_time'], 'mx2', 'start', times['run'], subrun),
+                                    (times['end_time'], 'mx2', 'end', times['run'], subrun)])
 
     subrun_info.sort()  # Sort subrun_info by time
 
@@ -112,17 +110,20 @@ def get_subrun_dict(run, morcs_start, morcs_end):
             'crs_subrun': now_running['crs'][1],
             'lrs_run': now_running['lrs'][0],
             'lrs_subrun': now_running['lrs'][1],
-            'mx2_run': now_running['mx2'][0],
-            'mx2_subrun': now_running['mx2'][1],
         }
+        if Mx2_config['enabled']:
+            global_subrun_dict[global_subrun]['mx2_run'] = now_running['mx2'][0]
+            global_subrun_dict[global_subrun]['mx2_subrun'] = now_running['mx2'][1]
 
     if global_subrun in global_subrun_dict and global_subrun_dict[global_subrun]['end_time'] is None:
         last_crs_end_time = max(crs_subrun_dict[subrun]['end_time'] for subrun in crs_subrun_dict)
         last_lrs_end_time = max(lrs_subrun_dict[subrun]['end_time'] for subrun in lrs_subrun_dict)
-        last_mx2_end_time = max(mx2_subrun_dict[subrun]['end_time'] for subrun in mx2_subrun_dict)
         global_subrun_dict[global_subrun]['end_time'] = max(last_crs_end_time,
-                                                            last_lrs_end_time,
-                                                            last_mx2_end_time)
+                                                            last_lrs_end_time)
+        if Mx2_config['enabled']:
+            last_mx2_end_time = max(mx2_subrun_dict[subrun]['end_time'] for subrun in mx2_subrun_dict)
+            global_subrun_dict[global_subrun]['end_time'] = \
+                max(global_subrun_dict[global_subrun]['end_time'], last_mx2_end_time)
 
     final_global_subrun_dict = clean_global_subrun_dict(global_subrun_dict, run)
 
@@ -155,10 +156,11 @@ def main():
     # CRS_summary= CRS_blob_maker(run=run, start=start, end=end) #get summary LRS info
     LRS_summary= LRS_blob_maker(run=args.run, start=args.start, end=args.end) #get summary LRS info
 
-    Mx2_summary= Mx2_blob_maker(run=args.run, start=args.start, end=args.end) #get summary Mx2 info
-    # HACK
-    if args.run == 50005:
-        Mx2_summary2 = Mx2_blob_maker(run=50006, start=args.start, end=args.end) #get summary Mx2 info
+    if Mx2_config['enabled']:
+        Mx2_summary= Mx2_blob_maker(run=args.run, start=args.start, end=args.end) #get summary Mx2 info
+        # HACK
+        if args.run == 50005:
+            Mx2_summary2 = Mx2_blob_maker(run=50006, start=args.start, end=args.end) #get summary Mx2 info
 
     #LRS_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in LRS DB into a json blob
     #Mx2_blob_maker(run=run, start=start, end=end, dump_all_data=True)   #dumps all tables in Mx2 DB into a json blob
@@ -168,7 +170,8 @@ def main():
     # subrun_dict = get_subrun_dict(args.run, morcs_start, morcs_end)
     subrun_dict = get_subrun_dict(args.run, args.start, args.end)
 
-    SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=args.run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
+    if SC_config['enabled']:
+        SC_beam_summary = SC_blob_maker(measurement_name="runsdb", run_number=args.run, subrun_dict=subrun_dict) #get summary SC data for a given subrun_dict
 
     #SC_blob_maker(measurement_name="ucondb", run_number=20, subrun_dict=subrun_dict) #dumps all timeseries SC data of LRS subrun_info into a a json blob
 
@@ -180,11 +183,13 @@ def main():
     dump(subrun_dict, filename=filename, format='sqlite-global', tablename='All_global_subruns', is_global_subrun=True)
     dump(CRS_summary, filename=filename, format='sqlite', tablename='CRS_summary', global_run=args.run)
     dump(LRS_summary, filename=filename, format='sqlite', tablename='LRS_summary', global_run=args.run)
-    dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
-    dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary', global_run=args.run, is_global_subrun=True)
-    # HACK
-    if args.run == 50005:
-        dump(Mx2_summary2, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
+    if Mx2_config['enabled']:
+        dump(Mx2_summary, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
+        # HACK
+        if args.run == 50005:
+            dump(Mx2_summary2, filename=filename, format='sqlite', tablename='Mx2_summary', global_run=args.run)
+    if SC_config['enabled']:
+        dump(SC_beam_summary, filename=filename, format='sqlite', tablename='SC_beam_summary', global_run=args.run, is_global_subrun=True)
 
 
     query_end = datetime.now()

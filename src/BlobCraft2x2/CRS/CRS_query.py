@@ -10,7 +10,7 @@ import numpy as np
 
 from ..Beam.beam_query import get_beam_summary
 from ..DataManager import dump, unix_to_iso
-from .. import CRS_config
+from .. import CRS_config, IFbeam_config
 
 
 def get_config_data(h5path):
@@ -57,8 +57,9 @@ def CRS_blob_maker(run, sql_format=False):
         if sql_format:
             output.append(info)
         else:
-            info['beam_summary'] = get_beam_summary(info['start_time'],
-                                                    info['end_time'])
+            if IFbeam_config['enabled']:
+                info['beam_summary'] = get_beam_summary(info['start_time'],
+                                                        info['end_time'])
             output[subrun] = info
 
     start_subrun, end_subrun = 1, len(output)
