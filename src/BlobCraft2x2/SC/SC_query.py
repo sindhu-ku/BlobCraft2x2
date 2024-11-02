@@ -6,12 +6,11 @@ from ..DataManager import parse_datetime
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
 from ..Beam.beam_query import get_beam_summary
+from .. import SC_config, load_config
 
 class SCQueryGlobals:
     def __init__(self):
         measurement=''
-        param_config_file = ''
-        param_config=None
         influxDB=None
         psqlDB=None
         run=-1
@@ -41,8 +40,8 @@ def get_measurement_info():
     raise ValueError(f"Configuration does not support fetching {measurement}. Check influx_SC_special_dict, cryostat_tag_dict, purity_mon_variables in config/parameters.yaml to make sure your measurement is present there")
 
 def process_single_instance():
-    glob.config_influx = glob.param_config["influxdb"]
-    glob.config_pqsl = glob.param_config["psql"]
+    glob.config_influx = SC_config["influxdb"]
+    glob.config_pqsl = SC_config["psql"]
 
     if glob.measurement == "runsdb":
         if glob.subrun:
@@ -50,11 +49,11 @@ def process_single_instance():
         else:
             output_json_filename =os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}")
 
-        data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, json_filename=output_json_filename, subsample=glob.subsample, dump_all_data=False)
+        data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, json_filename=output_json_filename, subsample=glob.subsample, dump_all_data=False)
         dump(data, output_json_filename)
 
     elif glob.measurement == "all":
-        dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True, individual=True, output_dir=glob.output_dir)
+        dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, subsample=glob.subsample, dump_all_data=True, individual=True, output_dir=glob.output_dir)
 
     else:
         source, info = get_measurement_info()
@@ -88,10 +87,7 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
         glob.output_dir=os.getcwd()
 
     cred_config_file = "config/SC_credentials.yaml"
-    glob.param_config_file = "config/SC_parameters.yaml"
-
     cred_config = load_config(cred_config_file)
-    glob.param_config = load_config(glob.param_config_file)
 
     glob.psqlDB = PsqlDBManager(config=cred_config["psql"])
     glob.influxDB = InfluxDBManager(config=cred_config["influxdb"])
@@ -118,12 +114,12 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
 
             if glob.measurement=="runsdb":
                 beam_data = {"beam_summary": get_beam_summary(start_t, end_t)}
-                SC_data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
+                SC_data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, subsample=glob.subsample, dump_all_data=False)
                 data[subrun] = {**SC_data, **beam_data}
                 # dump() currently expects unix timestamps
                 data[subrun]['start_time_unix'] = iso_to_unix(times['start_time'])
                 data[subrun]['end_time_unix'] = iso_to_unix(times['end_time'])
-            if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
+            if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, subsample=glob.subsample, dump_all_data=True)
 
 
         if glob.measurement=="runsdb":

@@ -9,7 +9,8 @@ import h5py
 import numpy as np
 
 from ..Beam.beam_query import get_beam_summary
-from ..DataManager import dump, load_config, unix_to_iso
+from ..DataManager import dump, unix_to_iso
+from .. import CRS_config
 
 
 def get_config_data(h5path):
@@ -22,7 +23,7 @@ def get_config_data(h5path):
 def CRS_blob_maker(run, sql_format=False):
     print(f"\n----------------------------------------Fetching CRS data for the run {run}----------------------------------------")
 
-    config = load_config("config/CRS_parameters.yaml")
+    config = CRS_config
     data_dir = config['data_dir']
 
     if sql_format:

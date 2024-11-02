@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
 from ..DataManager import *
-from .. import local_tz
+from .. import local_tz, SC_config
 
 class SCUtilsGlobals:
     def __init__(self):
@@ -107,8 +107,8 @@ def get_mod_voltages():
         mod_voltages[i] = get_mean(data, var)
     return mod_voltages
 
-def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
-    config = load_config(config_file)
+def dump_SC_data(influxDB_manager, psqlDB_manager, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
+    config = SC_config
     glob.config_influx = config["influxdb"]
     glob.config_psql = config["psql"]
     glob.subsample_interval = subsample

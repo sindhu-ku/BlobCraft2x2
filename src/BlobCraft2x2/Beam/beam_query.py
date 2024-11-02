@@ -2,11 +2,12 @@
 
 import argparse
 import pandas as pd
-from ..DataManager import load_config, dump
+from ..DataManager import dump
 from ..DB import IFBeamManager
 from ..DataManager import parse_datetime
+from .. import IFbeam_config
 
-config = load_config('config/IFbeam_parameters.yaml')
+config = IFbeam_config
 manager = IFBeamManager(config)
 
 def calculate_total_pot(df_pot):

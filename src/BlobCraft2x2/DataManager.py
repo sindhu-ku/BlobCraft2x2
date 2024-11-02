@@ -56,10 +56,6 @@ def clean_subrun_dict(subrun_dict, start, end):
 
     return cleaned_subrun_dict
 
-def load_config(config_file):
-    with open(config_file, 'r') as f:
-        return yaml.safe_load(f)
-
 def dump(data, filename, format='json', tablename='runsdb', global_run=None,
          is_global_subrun=False):
     if not data:

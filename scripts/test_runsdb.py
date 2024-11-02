@@ -9,8 +9,9 @@ from BlobCraft2x2.LRS.LRS_query import LRS_blob_maker
 from BlobCraft2x2.Mx2.Mx2_query import Mx2_blob_maker
 from BlobCraft2x2.SC.SC_query import SC_blob_maker
 from BlobCraft2x2.DB import SQLiteDBManager
-from BlobCraft2x2.DataManager import load_config, dump, clean_subrun_dict
+from BlobCraft2x2.DataManager import dump, clean_subrun_dict
 from BlobCraft2x2.DataManager import parse_datetime
+from BlobCraft2x2 import CRS_config, LRS_config, Mx2_config, SC_config, IFbeam_config
 
 # run=50014
 # start="2024-07-08T11:42:18"
@@ -44,15 +45,14 @@ def clean_global_subrun_dict(global_subrun_dict, run): #remove really small subr
     return final_global_subrun_dict
 
 def get_subrun_dict(run, morcs_start, morcs_end):
-    def load_subrun_data(config_file, table, start, end, subrun, condition):
-        config = load_config(config_file)
+    def load_subrun_data(config, table, start, end, subrun, condition):
         sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
         data = sqlite.get_subruns(table=table, start=start, end=end, subrun=subrun, condition=condition)
         return clean_subrun_dict(data, start=morcs_start, end=morcs_end)
 
-    crs_subrun_dict = load_subrun_data("config/CRS_parameters.yaml", 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'run')
-    lrs_subrun_dict = load_subrun_data("config/LRS_parameters.yaml", 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
-    mx2_subrun_dict = load_subrun_data("config/Mx2_parameters.yaml", 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
+    crs_subrun_dict = load_subrun_data(CRS_config, 'crs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'run')
+    lrs_subrun_dict = load_subrun_data(LRS_config, 'lrs_runs_data', 'start_time_unix', 'end_time_unix', 'subrun', 'morcs_run_nr')
+    mx2_subrun_dict = load_subrun_data(Mx2_config, 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
     #Test example
     # lrs_subrun_dict = {0: {'start_time': '2024-07-08T10:46:46-05:00', 'end_time': '2024-07-08T10:47:47-05:00'}, 1: {'start_time': '2024-07-08T10:47:47-05:00', 'end_time': '2024-07-08T10:48:47-05:00'}, 2: {'start_time': '2024-07-08T10:48:47-05:00', 'end_time': '2024-07-08T10:49:47-05:00'}, 3: {'start_time': '2024-07-08T10:49:47-05:00', 'end_time': '2024-07-08T10:50:48-05:00'}, 4: {'start_time': '2024-07-08T10:50:48-05:00', 'end_time': '2024-07-08T10:51:48-05:00'}, 5: {'start_time': '202407-08T10:51:48-05:00', 'end_time': '2024-07-08T10:52:49-05:00'}, 6: {'start_time': '2024-07-08T10:52:49-05:00', 'end_time': '2024-07-08T10:53:50-05:00'}, 7: {'start_time': '2024-07-08T10:53:50-05:00', 'end_time': '2024-07-08T10:54:50-05:00'}, 8: {'start_time': '2024-07-08T10:54:50-05:00', 'end_time': '2024-07-08T10:55:51-05:00'}, 9: {'start_time': '2024-07-08T10:55:51-05:00', 'end_time': '2024-07-08T10:56:51-05:00'}, 10: {'start_time': '2024-07-08T10:56:51-05:00', 'end_time': '2024-0708T10:57:51-05:00'}, 11: {'start_time': '2024-07-08T10:57:51-05:00', 'end_time': '2024-07-08T10:58:52-05:00'}, 12: {'start_time': '2024-07-08T10:58:52-05:00', 'end_time': '2024-07-08T10:59:09-05:00'}}
     # mx2_subrun_dict = {1: {'start_time': '2024-07-08T10:47:22-05:00', 'end_time': '2024-07-08T10:49:09-05:00'}, 2: {'start_time': '2024-07-08T10:49:09-05:00', 'end_time': '2024-07-08T10:59:15-05:00'}}
@@ -61,7 +61,7 @@ def get_subrun_dict(run, morcs_start, morcs_end):
     # TODO: Key subrun dict on (run, subrun) instead of subrun
     if run == 50005:
         run = 50006
-        mx2_subrun_dict2 = load_subrun_data("config/Mx2_parameters.yaml", 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
+        mx2_subrun_dict2 = load_subrun_data(Mx2_config, 'runsubrun', 'subrunstarttime', 'subrunfinishtime', 'runsubrun', 'runsubrun/10000')
         run = 50005
 
     subrun_info = []
