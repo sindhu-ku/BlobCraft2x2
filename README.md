@@ -27,6 +27,20 @@ Symlink the appropriate config directory:
 - For 2x2: `ln -s configs/2x2 config`
 - For FSD: `ln -s configs/FSD config`
 
+Place a copy/symlink of the MORCS database at `config/morcs.sqlite`.
+
+### Generating a full runs DB
+
+Running e.g. `scripts/make_db.sh 20014` will generate `output/runs_20014.db`. The script `scripts/merge_sqlite.py` can then be used to merge these. For example, to produce `runs_all.db` from runs 20014 and 20015:
+
+``` bash
+scripts/make_db.sh 20014
+scripts/make_db.sh 20015
+scripts/merge_sqlite.py runs_all.db output/runs_*.db
+```
+
+The rest of this readme describes the individual subsystems.
+
 ### Slow/ detector controls
 
 Usage:
@@ -87,6 +101,14 @@ Usage:
 Beam_query --start=<start> --end=<end> --measurement="Total POT"
 ```
 Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
+
+### Charge readout system
+
+Usage:
+```
+CRS_query --run=<run_number>
+```
+Parameters that will be saved are in config/CRS_paramters.yaml and can be changed according to needs
 
 ### Light readout system
 
