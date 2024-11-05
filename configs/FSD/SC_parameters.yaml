@@ -1,4 +1,4 @@
-enabled: false
+enabled: true
 
 influxdb:
   # mpod_dict:  &mpod_dict
@@ -53,22 +53,3 @@ influxdb:
   good_ground_impedance: 150 #ohms #threshold below which ground impedance is bad
   drift_dist: 30.2 #centimeters
   good_LAr_level: 2335.0 #mm #threshold below which LAr level is bad.
-
-psql:
-  cryo_table_prefix: "sqlt_data_1"
-  purity_mon_table: "prm_table"
-
-  cryostat_tag_dict:
-    cryostat_pressure: "34"
-    LAr_level: "37"
-
-  purity_mon_variables:
-    electron_lifetime: "prm_lifetime"
-    impurities: "prm_impurities"
-    anode_peak: "prm_anodepeak"
-    cathode_peak: "prm_cathodepeak"
-    anode_time: "prm_anodetime"
-    cathode_time: "prm_cathodetime"
-    anode_hv: "prm_anode_hv"
-    cathode_hv: "prm_cathode_hv"
-    anodegrid_hv: "prm_anodegrid_hv"

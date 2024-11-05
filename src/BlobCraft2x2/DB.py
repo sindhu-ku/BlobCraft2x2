@@ -108,7 +108,7 @@ class InfluxDBManager:
         self.config = config
         self.start = None
         self.end = None
-        self.client = InfluxDBClient(host=self.config["host"], port=self.config["port"])
+        self.client = InfluxDBClient(**config)
 
     def set_time_range(self, start, end):
         self.start = start
