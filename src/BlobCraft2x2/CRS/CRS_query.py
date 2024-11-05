@@ -15,23 +15,29 @@ from .. import CRS_config, IFbeam_config
 
 
 def get_daq_config(f: h5py.File):
-    stream = io.BytesIO(np.array(f['daq_configs']).data)
-    with tarfile.open(fileobj=stream) as tarf:
-        rootname = tarf.getmembers()[0].name
-        chip_id ='1-1-11'
-        path = f'{rootname}/asic_configs/config_{chip_id}.json'
-        config = json.load(tarf.extractfile(path))
+    keys = ['threshold_global',
+            'ref_current_trim',
+            'vref_dac',
+            'vcm_dac',
+            'adc_hold_delay',
+            'enable_periodic_reset',
+            'enable_rolling_periodic_reset',
+            'periodic_reset_cycles']
 
-        keys = ['threshold_global',
-                'ref_current_trim',
-                'vref_dac',
-                'vcm_dac',
-                'adc_hold_delay',
-                'enable_periodic_reset',
-                'enable_rolling_periodic_reset',
-                'periodic_reset_cycles']
+    try:
+        stream = io.BytesIO(np.array(f['daq_configs']).data)
+        with tarfile.open(fileobj=stream) as tarf:
+            rootname = tarf.getmembers()[0].name
+            chip_id ='1-1-11'
+            path = f'{rootname}/asic_configs/config_{chip_id}.json'
+            config = json.load(tarf.extractfile(path))
+            return {k: config[k] for k in keys}
+    except:
+        fname = Path(f.filename).name
+        print(f'Warning: Could not get daq_configs from {fname}',
+              file=sys.stderr)
+        return {k: -1 for k in keys}
 
-        return {k: config[k] for k in keys}
 
 def CRS_blob_maker(run):
     print(f"\n----------------------------------------Fetching CRS data for the run {run}----------------------------------------")
