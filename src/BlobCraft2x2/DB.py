@@ -8,8 +8,7 @@ from influxdb import InfluxDBClient
 import numpy as np
 import requests
 import pandas as pd
-
-chicago_tz =  ZoneInfo("America/Chicago")
+from . import local_tz
 
 class PsqlDBManager:
     def __init__(self, config):
@@ -109,7 +108,7 @@ class InfluxDBManager:
         self.config = config
         self.start = None
         self.end = None
-        self.client = InfluxDBClient(host=self.config["host"], port=self.config["port"])
+        self.client = InfluxDBClient(**config)
 
     def set_time_range(self, start, end):
         self.start = start
@@ -192,8 +191,8 @@ class SQLiteDBManager:
             subrun_number = subrun_info[subrun] %10000
             subrun_times = {
                 'run': self.run,
-                'start_time': datetime.fromtimestamp(int(subrun_info[start]), tz=chicago_tz).isoformat(),
-                'end_time': datetime.fromtimestamp(int(subrun_info[end]), tz=chicago_tz).isoformat()
+                'start_time': datetime.fromtimestamp(int(subrun_info[start]), tz=local_tz).isoformat(),
+                'end_time': datetime.fromtimestamp(int(subrun_info[end]), tz=local_tz).isoformat()
             }
             subruns[subrun_number] = subrun_times
 

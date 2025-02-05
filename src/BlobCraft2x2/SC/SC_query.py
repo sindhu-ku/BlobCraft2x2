@@ -6,22 +6,21 @@ from ..DataManager import parse_datetime
 from ..DB import InfluxDBManager, PsqlDBManager
 from .SC_utils import *
 from ..Beam.beam_query import get_beam_summary
+from .. import IFbeam_config, SC_config, load_config
 
 class SCQueryGlobals:
     def __init__(self):
-        measurement=''
-        param_config_file = ''
-        param_config=None
-        influxDB=None
-        psqlDB=None
-        run=-1
-        subrun=-1
-        subsample=None
-        start=None
-        end=None
-        config_influx=None
-        config_pqsl=None
-        output_dir=None
+        self.measurement=''
+        self.influxDB=None
+        self.psqlDB=None
+        self.run=-1
+        self.subrun=-1
+        self.subsample=None
+        self.start=None
+        self.end=None
+        self.config_influx=None
+        self.config_pqsl=None
+        self.output_dir=None
 
 glob = SCQueryGlobals()
 
@@ -41,8 +40,8 @@ def get_measurement_info():
     raise ValueError(f"Configuration does not support fetching {measurement}. Check influx_SC_special_dict, cryostat_tag_dict, purity_mon_variables in config/parameters.yaml to make sure your measurement is present there")
 
 def process_single_instance():
-    glob.config_influx = glob.param_config["influxdb"]
-    glob.config_pqsl = glob.param_config["psql"]
+    glob.config_influx = SC_config["influxdb"]
+    glob.config_pqsl = SC_config["psql"]
 
     if glob.measurement == "runsdb":
         if glob.subrun:
@@ -50,11 +49,11 @@ def process_single_instance():
         else:
             output_json_filename =os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}")
 
-        data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, json_filename=output_json_filename, subsample=glob.subsample, dump_all_data=False)
+        data = dump_SC_data(json_filename=output_json_filename, dump_all_data=False)
         dump(data, output_json_filename)
 
     elif glob.measurement == "all":
-        dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True, individual=True, output_dir=glob.output_dir)
+        dump_SC_data(dump_all_data=True, individual=True, output_dir=glob.output_dir)
 
     else:
         source, info = get_measurement_info()
@@ -88,13 +87,12 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
         glob.output_dir=os.getcwd()
 
     cred_config_file = "config/SC_credentials.yaml"
-    glob.param_config_file = "config/SC_parameters.yaml"
-
     cred_config = load_config(cred_config_file)
-    glob.param_config = load_config(glob.param_config_file)
 
-    glob.psqlDB = PsqlDBManager(config=cred_config["psql"])
-    glob.influxDB = InfluxDBManager(config=cred_config["influxdb"])
+    if "psql" in cred_config:
+        glob.psqlDB = PsqlDBManager(config=cred_config["psql"])
+    if "influxdb" in cred_config:
+        glob.influxDB = InfluxDBManager(config=cred_config["influxdb"])
 
     if subrun_dict:
         if not (glob.measurement == "runsdb" or glob.measurement == "ucondb"): raise ValueError("Unrecognized measurement value. Only give 'ucondb' or 'runsdb' if subrun_dict is used!")
@@ -113,22 +111,27 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
                 print(f"Error parsing date: {e}")
                 return
             print(f"----------------------------------------Fetching Slow Controls data for the time period {glob.start} to {glob.end}, subrun={subrun}----------------------------------------")
-            glob.psqlDB.set_time_range(glob.start, glob.end)
-            glob.influxDB.set_time_range(glob.start, glob.end)
+            if glob.psqlDB:
+                glob.psqlDB.set_time_range(glob.start, glob.end)
+            if glob.influxDB:
+                glob.influxDB.set_time_range(glob.start, glob.end)
 
             if glob.measurement=="runsdb":
-                beam_data = {"beam_summary": get_beam_summary(start_t, end_t)}
-                SC_data = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=False)
-                data[subrun] = {**SC_data, **beam_data}
+                data[subrun] = dump_SC_data(dump_all_data=False)
+                if IFbeam_config['enabled']:
+                    beam_data = {"beam_summary": get_beam_summary(start_t, end_t)}
+                    data[subrun].update(beam_data)
                 # dump() currently expects unix timestamps
                 data[subrun]['start_time_unix'] = iso_to_unix(times['start_time'])
                 data[subrun]['end_time_unix'] = iso_to_unix(times['end_time'])
-            if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(influxDB_manager=glob.influxDB, psqlDB_manager=glob.psqlDB, config_file=glob.param_config_file, subsample=glob.subsample, dump_all_data=True)
+            if glob.measurement=="ucondb": data[f'subrun_{subrun}'] = dump_SC_data(dump_all_data=True)
 
 
         if glob.measurement=="runsdb":
-            glob.influxDB.close_connection()
-            glob.psqlDB.close_connection()
+            if glob.influxDB:
+                glob.influxDB.close_connection()
+            if glob.psqlDB:
+                glob.psqlDB.close_connection()
             return data
         if glob.measurement=="ucondb": dump(data, os.path.join(glob.output_dir, f"SlowControls_all_ucondb_measurements_run-{glob.run}_{start_str}_{end_str}"))
 
@@ -140,12 +143,16 @@ def SC_blob_maker(measurement_name, start_time=None, end_time=None, subsample_in
         except ValueError as e:
             print(f"Error parsing date: {e}")
             return
-        glob.psqlDB.set_time_range(glob.start, glob.end)
-        glob.influxDB.set_time_range(glob.start, glob.end)
+        if glob.psqlDB:
+            glob.psqlDB.set_time_range(glob.start, glob.end)
+        if glob.influxDB:
+            glob.influxDB.set_time_range(glob.start, glob.end)
         process_single_instance()
 
-    glob.influxDB.close_connection()
-    glob.psqlDB.close_connection()
+    if glob.influxDB:
+        glob.influxDB.close_connection()
+    if glob.psqlDB:
+        glob.psqlDB.close_connection()
 
 def main():
     parser = argparse.ArgumentParser(description="Query data from databases and save it as JSON.")

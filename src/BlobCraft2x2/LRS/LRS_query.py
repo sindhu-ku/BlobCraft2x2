@@ -1,12 +1,13 @@
 import argparse
 import yaml
 from ..DB import SQLiteDBManager
-from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
+from ..DataManager import dump, unix_to_iso, clean_subrun_dict
 from ..Beam.beam_query import get_beam_summary
+from .. import IFbeam_config, LRS_config
 
 def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
     print(f"\n----------------------------------------Fetching LRS data for the run {run}----------------------------------------")
-    config = load_config("config/LRS_parameters.yaml")
+    config = LRS_config
     sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
 
     output = {}
@@ -56,7 +57,8 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
         moas_dict = [dict(zip(moas_columns, row)) for row in moas_data]
 
         data[0].update(moas_dict[0])
-        data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
+        if IFbeam_config['enabled']:
+            data[0]["beam_summary"] = get_beam_summary(times['start_time'], times['end_time'])
         output[subrun] = data[0]
         output[subrun]['run'] = run
 

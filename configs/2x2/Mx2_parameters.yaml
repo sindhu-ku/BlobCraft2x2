@@ -1,1 +1,3 @@
+enabled: true
+
 filename: "config/daqSQLiteDB.db"

@@ -5,18 +5,17 @@ import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
 from ..DataManager import *
-
-chicago_tz = ZoneInfo("America/Chicago")
+from .. import local_tz, Global_config, SC_config
 
 class SCUtilsGlobals:
     def __init__(self):
-        config_influx = {}
-        config_psql = {}
-        subsample_interval = None
-        influxDB = None
-        psqlDB = None
-        individual = False
-        output_dir = None
+        self.config_influx = {}
+        self.config_psql = {}
+        self.subsample_interval = None
+        self.influxDB = None
+        self.psqlDB = None
+        self.individual = False
+        self.output_dir = None
 
 
 glob = SCUtilsGlobals()
@@ -108,13 +107,63 @@ def get_mod_voltages():
         mod_voltages[i] = get_mean(data, var)
     return mod_voltages
 
-def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, json_filename="", dump_all_data=False, individual=False, output_dir=None):
-    config = load_config(config_file)
-    glob.config_influx = config["influxdb"]
-    glob.config_psql = config["psql"]
-    glob.subsample_interval = subsample
-    glob.influxDB = influxDB_manager
-    glob.psqlDB = psqlDB_manager
+def get_data_2x2():
+    ground_tag, bad_ground_per = get_tag("ground_impedance", "resistance", glob.config_influx["good_ground_impedance"])
+    LAr_tag, bad_LAr_per = get_tag("LAr_level_mm", "magnitude", glob.config_influx["good_LAr_level"])
+    O2_meas = get_last_O2()
+    electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
+    set_voltage = get_spellman_hv()
+    mod_voltages = get_mod_voltages()
+    electric_fields = mod_voltages/(1e3*glob.config_influx["drift_dist"])
+
+    return {
+        "Gizmo_grounding": {
+            "quality": ground_tag,
+            "bad_values_percent": bad_ground_per
+        },
+        "Liquid_Argon_level": {
+            "quality": LAr_tag,
+            "bad_values_percent": bad_LAr_per
+        },
+        "Purity_monitor": {
+            "last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(local_tz).isoformat(),
+            "electron_lifetime_ms": electron_lifetime[1]*1e3
+        },
+        "O2_ppb": {
+            "last_timestamp": O2_meas['time'],
+            "value": O2_meas['magnitude']
+        },
+        "Mean_Spellman_set_voltage_kV": set_voltage,
+        "Mean_module_voltages_kV": {
+            "Module0": mod_voltages[0],
+            "Module1": mod_voltages[1],
+            "Module2": mod_voltages[2],
+            "Module3": mod_voltages[3]
+        },
+        "Electric_fields_V_per_cm": {
+            "Module0": electric_fields[0],
+            "Module1": electric_fields[1],
+            "Module2": electric_fields[2],
+            "Module3": electric_fields[3]
+        }
+    }
+
+def get_data_FSD():
+    meas = glob.influxDB.fetch_measurement_data(
+        'fsd_sc', 'PFD-5x5', ['mean("ch-1")'])
+    hv = next(meas.get_points())['mean']
+    return {'HV_kV': hv}
+
+def dump_SC_data(json_filename="", dump_all_data=False, individual=False, output_dir=None):
+    config = SC_config
+    from .SC_query import glob as glob_SC_query
+    if "influxdb" in config:
+        glob.config_influx = config["influxdb"]
+        glob.influxDB = glob_SC_query.influxDB
+    if "psql" in config:
+        glob.config_psql = config["psql"]
+        glob.psqlDB = glob_SC_query.psqlDB
+    glob.subsample_interval = glob_SC_query.subsample
     glob.individual = individual
     if output_dir: glob.output_dir = output_dir
     else: glob.output_dir=os.getcwd()
@@ -124,48 +173,12 @@ def dump_SC_data(influxDB_manager, psqlDB_manager, config_file, subsample=None, 
         if not glob.individual:
             merged_data = {**influx_data, **psql_data}
             return merged_data
+    elif Global_config['experiment'] == '2x2':
+        return get_data_2x2()
+    elif Global_config['experiment'] == 'FSD':
+        return get_data_FSD()
     else:
-        ground_tag, bad_ground_per = get_tag("ground_impedance", "resistance", glob.config_influx["good_ground_impedance"])
-        LAr_tag, bad_LAr_per = get_tag("LAr_level_mm", "magnitude", glob.config_influx["good_LAr_level"])
-        O2_meas = get_last_O2()
-        electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
-        set_voltage = get_spellman_hv()
-        mod_voltages = get_mod_voltages()
-        electric_fields = mod_voltages/(1e3*glob.config_influx["drift_dist"])
-
-        data = {
-            "Gizmo_grounding": {
-                "quality": ground_tag,
-                "bad_values_percent": bad_ground_per
-            },
-            "Liquid_Argon_level": {
-                "quality": LAr_tag,
-                "bad_values_percent": bad_LAr_per
-            },
-            "Purity_monitor": {
-                "last_timestamp": pd.to_datetime(electron_lifetime[0], utc=True).astimezone(chicago_tz).isoformat(),
-                "electron_lifetime_ms": electron_lifetime[1]*1e3
-            },
-            "O2_ppb": {
-                "last_timestamp": O2_meas['time'],
-                "value": O2_meas['magnitude']
-            },
-            "Mean_Spellman_set_voltage_kV": set_voltage,
-            "Mean_module_voltages_kV": {
-                "Module0": mod_voltages[0],
-                "Module1": mod_voltages[1],
-                "Module2": mod_voltages[2],
-                "Module3": mod_voltages[3]
-            },
-            "Electric_fields_V_per_cm": {
-                "Module0": electric_fields[0],
-                "Module1": electric_fields[1],
-                "Module2": electric_fields[2],
-                "Module3": electric_fields[3]
-            }
-        }
-
-        return data
+        raise RuntimeError(f'Unknown experiment: {Global_config["experiment"]}')
 
 def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None, output_dir=None):
     if not variables: variables = influxDB.fetch_measurement_fields(database, measurement)

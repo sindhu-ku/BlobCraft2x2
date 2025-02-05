@@ -4,13 +4,14 @@ import argparse
 from pathlib import Path
 
 from ..DB import SQLiteDBManager
-from ..DataManager import dump, load_config, unix_to_iso, clean_subrun_dict
+from ..DataManager import dump, unix_to_iso, clean_subrun_dict
 from ..Beam.beam_query import get_beam_summary
+from .. import Mx2_config
 
 def Mx2_blob_maker(run, start=None, end=None, dump_all_data=False):
     print(f"\n----------------------------------------Fetching Mx2 data for the run {run}----------------------------------------")
 
-    config = load_config("config/Mx2_parameters.yaml")
+    config = Mx2_config
     sqlite = SQLiteDBManager(run=run, filename=config.get('filename'))
 
     output = {}
