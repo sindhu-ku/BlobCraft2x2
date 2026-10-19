@@ -71,7 +71,7 @@ This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-0
   - InfluxDB (more variables can be easily added in config/SC_parameters.yaml):
     - ground_impedance
     - pick_off_voltages
-    - set_voltage
+    - set_voltage (read from psql from run-2)
     - oil_temperature
     - RTD_temperature
     - cryostat_pressure
