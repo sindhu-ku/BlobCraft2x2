@@ -1,9 +1,9 @@
 Author: Sindhujha Kumaran (s.kumaran@uci.edu)
 ## Query different subsystem databases and save them to JSON blobs
-Pre-requisites (Not needed for beam):
+Pre-requisites (the VPN, tunnel and credentials are only needed for slow controls, `SC_query`):
 - Fermilab VPN
 - Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov` (make sure you have an account on acdcs)
-- Get config/SC_credentials.yaml from me (make sure that the port in influxdb credentials is the same one as you tunneled into, eg. 8087 above)
+- Get `SC_credentials.yaml` from Sindhujha Kumaran or Matt Kramer and put it in the config directory (e.g. `configs/2x2/`, see below). Make sure that the port in the influxdb credentials is the same one as you tunneled into, e.g. 8087 above
 - A LRS db file in config/LRS_parameters.yaml and a Mx2 db file in config/Mx2_parameters.yaml
 
 Installation:
@@ -28,6 +28,10 @@ Symlink the appropriate config directory:
 - For FSD: `ln -s configs/FSD config`
 
 Place a copy/symlink of the MORCS database at `config/morcs.sqlite`.
+
+Run the queries from the directory that contains `config`, since config files are read from `config/...`.
+
+`connect_timeout` in `config/Global_parameters.yaml` (default 20 s) is the connection timeout for the network databases (PostgreSQL, InfluxDB, IFbeam), so an unreachable database gives an error instead of hanging. It only limits connecting, not long queries. Each database is only connected to when a query needs it.
 
 ### Generating a full runs DB
 
@@ -55,7 +59,7 @@ This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-0
   - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
   - --measurement: Measurement name to query. Use 'all' if you want all the measurments inside SC_parameters/config.yaml (`influx_SC_DB`, `cryostat_tag_dict`, `purity_mon_variables`)
 - optional:
-  - --subsample: Subsample interval in s like '60S' if you want coarser measurements
+  - --subsample: Subsample interval in s like '60s' if you want coarser measurements (lowercase 's'; newer pandas versions reject '60S')
   - --output_dir: Directory to save the output files. Default is current directory
 - runsDB specific:
   - --measurement: 'runsdb' for summary and 'ucondb' for dumping all measurements in one json blob
@@ -101,6 +105,13 @@ Usage:
 Beam_query --start=<start> --end=<end> --measurement="Total POT"
 ```
 Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
+
+POT is read from the devices in `pot_device_names` in `config/IFbeam_parameters.yaml` (`E:TRTGTD`, then `E:TOR101`). As in ND_CAFMaker, each spill uses the first device with a reading above `pot_threshold`, so spills where `E:TRTGTD` is missing or below threshold are taken from `E:TOR101`; spills below threshold on both devices are not counted. Readings from different devices less than `spill_match_dt` (0.1 s) apart belong to the same spill (the devices differ by up to ~15 ms and spills are ~1.2 s apart). The POT timeseries has a `device` field per spill, and the beam summary (also in the runs DB as `beam_summary_POT_device`) has `POT_device`, listing the devices that were used.
+
+To use only one device, e.g. for detailed checks:
+```
+Beam_query --start=<start> --end=<end> --measurement="Total POT" --device="E:TOR101"
+```
 
 ### Charge readout system
 
