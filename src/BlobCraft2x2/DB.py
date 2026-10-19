@@ -109,6 +109,18 @@ class PsqlDBManager:
         return f"{measurement_name}_{self.start.isoformat()}_{self.end.isoformat()}"
 
 
+    def get_dcs_data(self, channel):
+        print(f"\nQuerying {channel} from dcs_prd archiver in PostgreSQL Database")
+
+        # smpl_time is stored as naive local time
+        start = self.start.astimezone(local_tz).replace(tzinfo=None)
+        end = self.end.astimezone(local_tz).replace(tzinfo=None)
+        query = alc.text("SELECT s.smpl_time, COALESCE(s.float_val, s.num_val) FROM dcs_prd.sample s "
+                         "JOIN dcs_prd.channel c ON c.channel_id = s.channel_id "
+                         "WHERE c.name = :channel AND s.smpl_time >= :start AND s.smpl_time <= :end ORDER BY s.smpl_time")
+        result = self.connection.execute(query, {"channel": channel, "start": start, "end": end})
+        return [(int(t.replace(tzinfo=local_tz).timestamp() * 1e3), val) for t, val in result.all()] # ms, like the cryostat tables
+
     def close_connection(self):
         if self._connection is not None:
             self._connection.close()

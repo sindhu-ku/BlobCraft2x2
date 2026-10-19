@@ -58,6 +58,10 @@ psql:
   cryo_table_prefix: "sqlt_data_1"
   purity_mon_table: "prm_table"
 
+  #Spellman set voltage: InfluxDB (set_voltage above) before the switch, dcs_prd archiver channel after it
+  spellman_influx_to_dcs_switch: "2024-08-07T15:00:00-05:00" #last Influx point 14:26 CDT, first dcs_prd sample 15:04 CDT
+  spellman_dcs_channel: "spellmanhv/rVSet"
+
   cryostat_tag_dict:
     cryostat_pressure: "34"
     LAr_level: "37"

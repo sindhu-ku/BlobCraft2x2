@@ -91,8 +91,19 @@ def get_last_O2():
     else: return {'time': datetime.now(), 'magnitude': '0.0'}
 
 def get_spellman_hv():
+    # Spellman HV moved from InfluxDB to the PostgreSQL DCS archiver; read each part of the time range from where it was logged
     database, measurement, variables = get_influx_db_meas_vars("set_voltage")
-    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    switch = parse_datetime(glob.config_psql["spellman_influx_to_dcs_switch"], is_start=True)
+    start, end = glob.influxDB.start, glob.influxDB.end
+    data = []
+    if start < switch:
+        glob.influxDB.set_time_range(start, min(end, switch))
+        data += DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval) or []
+        glob.influxDB.set_time_range(start, end)
+    if end > switch:
+        glob.psqlDB.set_time_range(max(start, switch), end)
+        data += DataManager(glob.psqlDB.get_dcs_data(glob.config_psql["spellman_dcs_channel"])).format(source="psql", variables=variables, subsample_interval=glob.subsample_interval) or []
+        glob.psqlDB.set_time_range(start, end)
     if not data: return 0.0
     mean = get_mean(data, variables[0])
     return mean
