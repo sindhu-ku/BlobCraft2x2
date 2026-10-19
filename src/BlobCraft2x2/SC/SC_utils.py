@@ -90,22 +90,27 @@ def get_last_O2():
     if data: return data[-1]
     else: return {'time': datetime.now(), 'magnitude': '0.0'}
 
-def get_spellman_hv():
+def get_spellman_data(influxDB, psqlDB, subsample=None):
     # Spellman HV moved from InfluxDB to the PostgreSQL DCS archiver; read each part of the time range from where it was logged
-    database, measurement, variables = get_influx_db_meas_vars("set_voltage")
-    switch = parse_datetime(glob.config_psql["spellman_influx_to_dcs_switch"], is_start=True)
-    start, end = glob.influxDB.start, glob.influxDB.end
+    database, measurement, variables = SC_config["influxdb"]["influx_SC_special_dict"]["set_voltage"]
+    config_psql = SC_config["psql"]
+    switch = parse_datetime(config_psql["spellman_influx_to_dcs_switch"], is_start=True)
+    start, end = influxDB.start, influxDB.end
     data = []
     if start < switch:
-        glob.influxDB.set_time_range(start, min(end, switch))
-        data += DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval) or []
-        glob.influxDB.set_time_range(start, end)
+        influxDB.set_time_range(start, min(end, switch))
+        data += DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample) or []
+        influxDB.set_time_range(start, end)
     if end > switch:
-        glob.psqlDB.set_time_range(max(start, switch), end)
-        data += DataManager(glob.psqlDB.get_dcs_data(glob.config_psql["spellman_dcs_channel"])).format(source="psql", variables=variables, subsample_interval=glob.subsample_interval) or []
-        glob.psqlDB.set_time_range(start, end)
+        psqlDB.set_time_range(max(start, switch), end)
+        data += DataManager(psqlDB.get_dcs_data(config_psql["spellman_dcs_channel"])).format(source="psql", variables=variables, subsample_interval=subsample) or []
+        psqlDB.set_time_range(start, end)
+    return data
+
+def get_spellman_hv():
+    data = get_spellman_data(glob.influxDB, glob.psqlDB, glob.subsample_interval)
     if not data: return 0.0
-    mean = get_mean(data, variables[0])
+    mean = get_mean(data, SC_config["influxdb"]["influx_SC_special_dict"]["set_voltage"][2][0])
     return mean
 
 def get_mod_voltages():
