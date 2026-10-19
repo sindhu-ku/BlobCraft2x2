@@ -8,7 +8,10 @@ from influxdb import InfluxDBClient
 import numpy as np
 import requests
 import pandas as pd
-from . import local_tz
+from . import local_tz, Global_config
+
+# Connection timeout (s) for network databases; reads are not limited, so long queries still finish
+connect_timeout = Global_config.get('connect_timeout', 20)
 
 class PsqlDBManager:
     def __init__(self, config):
@@ -16,7 +19,7 @@ class PsqlDBManager:
         self.start = None
         self.end = None
         self.url = self.create_url()
-        self.engine = alc.create_engine(self.url)
+        self.engine = alc.create_engine(self.url, connect_args={"connect_timeout": connect_timeout})
         self.connection = self.engine.connect()
 
     def set_time_range(self, start, end):
@@ -108,7 +111,7 @@ class InfluxDBManager:
         self.config = config
         self.start = None
         self.end = None
-        self.client = InfluxDBClient(**config)
+        self.client = InfluxDBClient(**config, timeout=(connect_timeout, None))
 
     def set_time_range(self, start, end):
         self.start = start
@@ -285,7 +288,7 @@ class IFBeamManager:
 
     def fetch_data(self, url):
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=(connect_timeout, None))
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:

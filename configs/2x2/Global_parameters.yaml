@@ -1,3 +1,5 @@
 experiment: "2x2"
 
 timezone: "America/Chicago"
+
+connect_timeout: 20 # seconds; connection timeout for network databases (PostgreSQL, InfluxDB, IFbeam)

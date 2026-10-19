@@ -1,3 +1,5 @@
 experiment: "FSD"
 
 timezone: "Europe/Zurich"
+
+connect_timeout: 20 # seconds; connection timeout for network databases (PostgreSQL, InfluxDB, IFbeam)
