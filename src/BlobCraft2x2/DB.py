@@ -322,7 +322,7 @@ class IFBeamManager:
             return self.extract_time_series(data, combine_unit=combine_unit)
         else:
             print(f"WARNING: No beam data found for {self.start} to {self.end}!")
-            return {}
+            return pd.DataFrame()
 
     def extract_time_series(self, data, combine_unit=False):
         if 'rows' in data:
