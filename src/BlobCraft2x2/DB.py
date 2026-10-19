@@ -20,7 +20,14 @@ class PsqlDBManager:
         self.end = None
         self.url = self.create_url()
         self.engine = alc.create_engine(self.url, connect_args={"connect_timeout": connect_timeout})
-        self.connection = self.engine.connect()
+        self._connection = None
+
+    @property
+    def connection(self):
+        # Connect on first use so queries that only need InfluxDB never touch PostgreSQL
+        if self._connection is None:
+            self._connection = self.engine.connect()
+        return self._connection
 
     def set_time_range(self, start, end):
         self.start = start
@@ -103,8 +110,9 @@ class PsqlDBManager:
 
 
     def close_connection(self):
-        if self.connection is not None:
-            self.connection.close()
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
 
 class InfluxDBManager:
     def __init__(self, config):
