@@ -69,9 +69,12 @@ psql:
     outputMeasurementTerminalVoltage: voltage_terminal
     outputMeasurementCurrent: current
 
+  #Cryostat readings (cryostat_pressure, LAr_level_mm, O2_ppb above): InfluxDB before the switch, tag historian tables (cryo_table_prefix) after it
+  cryostat_influx_to_psql_switch: "2024-08-22T06:31:00-05:00" #last Influx cryo_readonly point 06:30 CDT
   cryostat_tag_dict:
-    cryostat_pressure: "34"
-    LAr_level: "37"
+    cryostat_pressure: "2236"
+    LAr_level_mm: "2259"
+    O2_ppb: "1877"
 
   purity_mon_variables:
     electron_lifetime: "prm_lifetime"
