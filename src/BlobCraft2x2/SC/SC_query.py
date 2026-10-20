@@ -59,12 +59,13 @@ def process_single_instance():
         source, info = get_measurement_info()
         if source == 'influx':
             database, measurement, variables = info
+            out_filename = os.path.join(glob.output_dir, f"{glob.measurement}_{glob.start.isoformat()}_{glob.end.isoformat()}") # named after the requested measurement, since several can share an InfluxDB measurement (e.g. pick_off_voltages and oil_temperature)
             if glob.measurement == "set_voltage": # InfluxDB before the switch to PostgreSQL, PostgreSQL after it
-                dump(get_spellman_data(glob.influxDB, glob.psqlDB, glob.subsample), filename=os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement)))
+                dump(get_spellman_data(glob.influxDB, glob.psqlDB, glob.subsample), filename=out_filename)
             elif glob.measurement in glob.config_pqsl.get("cryostat_tag_dict", {}): # InfluxDB before the switch to PostgreSQL, PostgreSQL after it
-                dump(get_cryostat_data(glob.influxDB, glob.psqlDB, glob.measurement, glob.subsample), filename=os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement)))
+                dump(get_cryostat_data(glob.influxDB, glob.psqlDB, glob.measurement, glob.subsample), filename=out_filename)
             else:
-                dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample, output_dir=glob.output_dir)
+                dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample, filename=out_filename)
         elif source == 'psql_purity_mon':
             tablename, measurements, variables = info
             dump_single_prm(psqlDB=glob.psqlDB, tablename=tablename, measurements=measurements, variables=variables, subsample=glob.subsample,  output_dir=glob.output_dir)

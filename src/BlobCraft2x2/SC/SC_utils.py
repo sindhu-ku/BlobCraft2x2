@@ -261,10 +261,9 @@ def dump_SC_data(json_filename="", dump_all_data=False, individual=False, output
     else:
         raise RuntimeError(f'Unknown experiment: {Global_config["experiment"]}')
 
-def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None, output_dir=None):
+def dump_single_influx(influxDB, database, measurement, variables=[], subsample=None, filename=None):
     if not variables: variables = influxDB.fetch_measurement_fields(database, measurement)
-    out_filename = os.path.join(output_dir, influxDB.make_filename(database, measurement))
-    dump(DataManager(influxDB.fetch_measurement_data(database=database, measurement=measurement, variables=variables)).format(source="influx", variables=variables, subsample_interval=subsample), filename=out_filename)
+    dump(DataManager(influxDB.fetch_measurement_data(database=database, measurement=measurement, variables=variables)).format(source="influx", variables=variables, subsample_interval=subsample), filename=filename)
 
 def dump_single_cryostat(psqlDB, table_prefix, variable, tagid, subsample=None, output_dir=None):
     out_filename = os.path.join(output_dir,  psqlDB.make_filename(variable))
