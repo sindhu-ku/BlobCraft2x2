@@ -28,9 +28,6 @@ influxdb:
     - module2_mpod1
     - module3_mpod1
     - HVmonitoring
-    - VME_crate01
-    - VME_crate23
-    - ADC_crate
     - pt100
     - cryo_readonly
     - lrs_monitor

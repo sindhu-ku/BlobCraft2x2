@@ -35,6 +35,8 @@ def influx_blind_dump():
             variables = glob.influxDB.fetch_measurement_fields(database, measurement)
             if "mpod_influx_to_dcs_switch" in glob.config_psql and re.match(r"module\d+_mpod\d+$", database):
                 formatted_data = get_mpod_data(database, measurement, variables)
+            elif [database, measurement] == glob.config_influx["influx_SC_special_dict"]["set_voltage"][:2]:
+                formatted_data = get_spellman_data(glob.influxDB, glob.psqlDB, glob.subsample_interval, variables)
             elif (database, measurement) in cryostat_meas:
                 formatted_data = get_cryostat_data(glob.influxDB, glob.psqlDB, cryostat_meas[(database, measurement)], glob.subsample_interval, variables)
             else:
@@ -135,7 +137,7 @@ def get_last_O2():
     if data: return data[-1]
     else: return {'time': datetime.now(), 'magnitude': '0.0'}
 
-def get_spellman_data(influxDB, psqlDB, subsample=None):
+def get_spellman_data(influxDB, psqlDB, subsample=None, influx_variables=None):
     # Spellman HV moved from InfluxDB to the PostgreSQL DCS archiver; read each part of the time range from where it was logged
     database, measurement, variables = SC_config["influxdb"]["influx_SC_special_dict"]["set_voltage"]
     config_psql = SC_config["psql"]
@@ -144,7 +146,7 @@ def get_spellman_data(influxDB, psqlDB, subsample=None):
     data = []
     if start < switch:
         influxDB.set_time_range(start, min(end, switch))
-        data += DataManager(influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=subsample) or []
+        data += DataManager(influxDB.fetch_measurement_data(database, measurement, influx_variables or variables)).format(source="influx", variables=influx_variables or variables, subsample_interval=subsample) or []
         influxDB.set_time_range(start, end)
     if end > switch:
         psqlDB.set_time_range(max(start, switch), end)
