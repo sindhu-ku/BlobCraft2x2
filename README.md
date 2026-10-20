@@ -57,8 +57,8 @@ SC_query --start="2024-05-27" --end="2024-05-28" --measurement="LAr_level_mm"
 This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-05:00-28T23:59:59.999999-05:00.json`
 
 - required arguments for simple query:
-  - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
-  - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss')
+  - --start: Start time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss', or unix time in s or ms like the beam clock)
+  - --end: End time for the query (various formats like 'YYYY-MM-DD', 'YYYY-MM-DD HH', 'YYYY-MM-DD HH:MM', 'YYYY-MM-DD HH:MM:SS.ssss', or unix time in s or ms like the beam clock)
   - --measurement: Measurement name to query. Use 'all' if you want all the measurments inside SC_parameters/config.yaml (`influx_SC_DB`, `cryostat_tag_dict`, `purity_mon_variables`)
 - optional:
   - --subsample: Subsample interval in s like '60s' if you want coarser measurements (lowercase 's'; newer pandas versions reject '60S')
@@ -106,7 +106,7 @@ Usage:
 ```
 Beam_query --start=<start> --end=<end> --measurement="Total POT"
 ```
-Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries).
+Similar to SC query for times. Supported measurements: "Total POT" (total for a given time) and "POT" (full timeseries). Times are given both as `time` (ISO) and `clock` (unix time in ms, as from IFbeam): each spill in the POT timeseries has `time` and `clock`, and the beam summary has `Start`/`End` and `Start_clock`/`End_clock`.
 
 POT is read from the devices in `pot_device_names` in `config/IFbeam_parameters.yaml` (`E:TRTGTD`, then `E:TOR101`). As in ND_CAFMaker, each spill uses the first device with a reading above `pot_threshold`, so spills where `E:TRTGTD` is missing or below threshold are taken from `E:TOR101`; spills below threshold on both devices are not counted. Readings from different devices less than `spill_match_dt` (0.1 s) apart belong to the same spill (the devices differ by up to ~15 ms and spills are ~1.2 s apart). The POT timeseries has a `device` field per spill, and the beam summary (also in the runs DB as `beam_summary_POT_device`) has `POT_device`, listing the devices that were used.
 

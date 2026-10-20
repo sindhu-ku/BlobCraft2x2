@@ -14,6 +14,11 @@ from . import Mx2_config, local_tz
 default_utc_time = "1969-12-31T18:00:00-06:00"
 
 def parse_datetime(date_str, is_start):
+    try: # unix time in s, or in ms like the IFbeam clock
+        unix_time = float(date_str)
+        return datetime.fromtimestamp(unix_time / 1e3 if unix_time > 1e11 else unix_time, tz=local_tz)
+    except ValueError:
+        pass
     dt = date_parser.parse(date_str)
     if not dt.tzinfo:
         dt = dt.replace(tzinfo=local_tz)

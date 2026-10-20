@@ -345,9 +345,9 @@ class IFBeamManager:
 
         if combine_unit:
             df_timeseries['value'] = df_timeseries.apply(lambda row: f"{row['value']}{row['units']}", axis=1)
-            df_timeseries = df_timeseries[['time', 'value']]
+            df_timeseries = df_timeseries[['time', 'clock', 'value']] # clock: unix time in ms
         else:
-            df_timeseries = df_timeseries[['time', 'value', 'unit']]
+            df_timeseries = df_timeseries[['time', 'clock', 'value', 'unit']]
 
         df_timeseries['value'] = pd.to_numeric(df_timeseries['value'], errors='coerce')
 
