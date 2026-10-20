@@ -1,4 +1,4 @@
-Author: Sindhujha Kumaran (s.kumaran@uci.edu)
+Authors: Sindhujha Kumaran (s.kumaran@uci.edu), Matt Kramer (mkramer@lbl.gov)
 ## Query different subsystem databases and save them to JSON blobs
 Pre-requisites (the VPN, tunnel and credentials are only needed for slow controls, `SC_query`):
 - Fermilab VPN
