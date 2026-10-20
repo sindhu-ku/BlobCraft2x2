@@ -47,7 +47,7 @@ def process_single_instance():
         if glob.subrun:
             output_json_filename = os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_subrun-{glob.subrun}_{glob.start.isoformat()}_{glob.end.isoformat()}")
         else:
-            output_json_filename =os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_{start.isoformat()}_{glob.end.isoformat()}")
+            output_json_filename =os.path.join(glob.output_dir, f"SlowControls_run-{glob.run}_{glob.start.isoformat()}_{glob.end.isoformat()}")
 
         data = dump_SC_data(json_filename=output_json_filename, dump_all_data=False)
         dump(data, output_json_filename)
