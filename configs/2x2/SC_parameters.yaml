@@ -62,6 +62,13 @@ psql:
   spellman_influx_to_dcs_switch: "2024-08-07T15:00:00-05:00" #last Influx point 14:26 CDT, first dcs_prd sample 15:04 CDT
   spellman_dcs_channel: "spellmanhv/rVSet"
 
+  #MPOD readings (module*_mpod* in influx_SC_db): InfluxDB before the switch, dcs_prd channels "Mod<N>-<channel_name>/<variable>" after it
+  mpod_influx_to_dcs_switch: "2025-07-01T17:00:00-05:00" #Influx MPOD data stops 2025-07-01, first dcs_prd sample 16:57 CDT
+  mpod_dcs_variables: #dcs_prd variable: Influx field name
+    outputMeasurementSenseVoltage: voltage
+    outputMeasurementTerminalVoltage: voltage_terminal
+    outputMeasurementCurrent: current
+
   cryostat_tag_dict:
     cryostat_pressure: "34"
     LAr_level: "37"

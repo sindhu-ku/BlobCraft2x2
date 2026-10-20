@@ -180,6 +180,8 @@ class DataManager:
             self.formatted_data.append(formatted_entry)
 
     def subsample(self, df, subsample_interval):
-        df_resampled = df.resample(subsample_interval, on="time").mean().dropna()
+        # mean of numeric fields, last value of text fields (e.g. status messages, logs)
+        agg = {col: 'mean' if pd.api.types.is_numeric_dtype(df[col]) else 'last' for col in df.columns if col != 'time'}
+        df_resampled = df.resample(subsample_interval, on="time").agg(agg).dropna(how="all")
         formatted_entries = df_resampled.reset_index().to_dict("records")
         return formatted_entries

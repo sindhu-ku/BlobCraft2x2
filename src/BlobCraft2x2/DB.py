@@ -121,6 +121,23 @@ class PsqlDBManager:
         result = self.connection.execute(query, {"channel": channel, "start": start, "end": end})
         return [(int(t.replace(tzinfo=local_tz).timestamp() * 1e3), val) for t, val in result.all()] # ms, like the cryostat tables
 
+    def get_dcs_channels(self, pattern):
+        print(f"\nQuerying channels matching {pattern} from dcs_prd archiver in PostgreSQL Database")
+
+        # Channels archived on change (e.g. MPOD) may have no sample in the time range, so also take each
+        # channel's last value before the start, at the start time. smpl_time is stored as naive local time
+        start = self.start.astimezone(local_tz).replace(tzinfo=None)
+        end = self.end.astimezone(local_tz).replace(tzinfo=None)
+        query = alc.text("WITH ch AS (SELECT channel_id, name FROM dcs_prd.channel WHERE name ~ :pattern) "
+                         "SELECT ch.name, s.smpl_time, COALESCE(s.float_val, s.num_val) FROM ch JOIN dcs_prd.sample s ON s.channel_id = ch.channel_id "
+                         "WHERE s.smpl_time >= :start AND s.smpl_time <= :end "
+                         "UNION ALL "
+                         "SELECT ch.name, CAST(:start AS timestamp), last.val FROM ch CROSS JOIN LATERAL "
+                         "(SELECT COALESCE(float_val, num_val) AS val FROM dcs_prd.sample WHERE channel_id = ch.channel_id AND smpl_time < :start "
+                         "ORDER BY smpl_time DESC LIMIT 1) last")
+        result = self.connection.execute(query, {"pattern": pattern, "start": start, "end": end})
+        return [(name, t.replace(tzinfo=local_tz), val) for name, t, val in result.all()]
+
     def close_connection(self):
         if self._connection is not None:
             self._connection.close()
@@ -155,7 +172,8 @@ class InfluxDBManager:
         end_utime = int(self.end.timestamp() * 1e3)
 
         query = ''
-        variable_str = ', '.join(variables)
+        # quote plain field names (some are InfluxQL keywords, e.g. "drop"); expressions like mean("ch-1") are used as given
+        variable_str = ', '.join(var if '(' in var or '"' in var else f'"{var}"' for var in variables)
 
         tag_keys = self.fetch_tag_keys(database, measurement)
         tag_keys_str = ', '.join(tag_keys)

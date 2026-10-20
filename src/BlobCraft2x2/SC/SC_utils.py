@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import numpy as np
 import pandas as pd
 from zoneinfo import ZoneInfo
@@ -31,14 +32,55 @@ def influx_blind_dump():
         measurements = glob.influxDB.fetch_measurements(database)
         for measurement in measurements:
             variables = glob.influxDB.fetch_measurement_fields(database, measurement)
-            result_data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables))
-            formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+            if "mpod_influx_to_dcs_switch" in glob.config_psql and re.match(r"module\d+_mpod\d+$", database):
+                formatted_data = get_mpod_data(database, measurement, variables)
+            else:
+                result_data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables))
+                formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
             if not glob.individual: merged_data[f'{database}_{measurement}'] = formatted_data
             else:
                 out_filename = os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement))
                 dump(formatted_data, filename=out_filename)
 
     if not glob.individual: return merged_data
+
+MPOD_DCS_GROUPS = {"VGAs": "VGA_Card", "RTDs": "RTD", "PACMAN&FANS": "PACMAN|pacFAN|[Ii]nterlock"} # Influx measurement: dcs_prd channel names
+
+def get_mpod_data(database, measurement, variables):
+    # MPOD readings moved from InfluxDB to the PostgreSQL DCS archiver; read each part of the time range from where it was logged
+    switch = parse_datetime(glob.config_psql["mpod_influx_to_dcs_switch"], is_start=True)
+    start, end = glob.influxDB.start, glob.influxDB.end
+    data = []
+    if start < switch:
+        glob.influxDB.set_time_range(start, min(end, switch))
+        data += DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval) or []
+        glob.influxDB.set_time_range(start, end)
+
+    module = re.match(r"module(\d+)_", database)
+    if end > switch and measurement in MPOD_DCS_GROUPS:
+        glob.psqlDB.set_time_range(max(start, switch), end)
+        rows = glob.psqlDB.get_dcs_channels(f"^Mod{module.group(1)}-[^/]*({MPOD_DCS_GROUPS[measurement]})[^/]*/")
+        glob.psqlDB.set_time_range(start, end)
+
+        fields = glob.config_psql["mpod_dcs_variables"]
+        df = pd.DataFrame(rows, columns=["name", "time", "value"])
+        df[["channel_name", "variable"]] = df["name"].str.split("/", n=1, expand=True)
+        df = df[df["variable"].isin(fields)]
+        df["value"] = pd.to_numeric(df["value"], errors="coerce")
+        df["time"] = pd.to_datetime(df["time"]).dt.tz_convert(local_tz)
+        for channel_name, df_channel in df.groupby("channel_name"):
+            # values are stored only when they change, so hold each value until the next one
+            df_channel = df_channel.pivot_table(index="time", columns="variable", values="value", aggfunc="last").rename(columns=fields)
+            df_channel = df_channel.reindex(columns=list(fields.values()))
+            if df_channel.isna().all().all(): continue # channel without numeric values
+            df_channel.loc[end.astimezone(local_tz)] = None # hold the last value until the end of the time range
+            df_channel = df_channel.sort_index().ffill()
+            if glob.subsample_interval is not None:
+                df_channel = df_channel.resample(glob.subsample_interval).mean().ffill()
+            df_channel = df_channel.astype(object).where(df_channel.notna(), None)
+            for time, row in df_channel.iterrows():
+                data.append({"time": time.isoformat(), **row.to_dict(), "tags": {"channel_name": channel_name}})
+    return data
 
 def psql_blind_dump():
     merged_data = {}
