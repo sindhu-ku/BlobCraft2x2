@@ -61,6 +61,8 @@ def process_single_instance():
             database, measurement, variables = info
             if glob.measurement == "set_voltage": # InfluxDB before the switch to PostgreSQL, PostgreSQL after it
                 dump(get_spellman_data(glob.influxDB, glob.psqlDB, glob.subsample), filename=os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement)))
+            elif glob.measurement in glob.config_pqsl.get("cryostat_tag_dict", {}): # InfluxDB before the switch to PostgreSQL, PostgreSQL after it
+                dump(get_cryostat_data(glob.influxDB, glob.psqlDB, glob.measurement, glob.subsample), filename=os.path.join(glob.output_dir, glob.influxDB.make_filename(database, measurement)))
             else:
                 dump_single_influx(influxDB=glob.influxDB, database=database, measurement=measurement, variables=variables, subsample=glob.subsample, output_dir=glob.output_dir)
         elif source == 'psql_purity_mon':

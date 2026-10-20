@@ -74,9 +74,9 @@ This should produce a file of format `LAr_level_mm_2024-05-27T00:00:00_2024-05-0
     - set_voltage (read from psql from run-2)
     - oil_temperature
     - RTD_temperature
-    - cryostat_pressure
-    - LAr_level_mm
-    - O2_ppb
+    - cryostat_pressure (read from psql after 2024-08-22)
+    - LAr_level_mm (read from psql after 2024-08-22)
+    - O2_ppb (read from psql after 2024-08-22)
 
   - Purity monitor measurements PSQL DB (note simply giving "purity_monitor" will dump all the below variables):
     - electron_lifetime

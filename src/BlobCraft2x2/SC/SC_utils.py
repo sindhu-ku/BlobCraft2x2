@@ -28,12 +28,15 @@ def get_mean(data, varname):
 def influx_blind_dump():
     databases = glob.config_influx.get("influx_SC_db", [])
     merged_data = {}
+    cryostat_meas = {tuple(glob.config_influx["influx_SC_special_dict"][name][:2]): name for name in glob.config_psql.get("cryostat_tag_dict", {})}
     for database in databases:
         measurements = glob.influxDB.fetch_measurements(database)
         for measurement in measurements:
             variables = glob.influxDB.fetch_measurement_fields(database, measurement)
             if "mpod_influx_to_dcs_switch" in glob.config_psql and re.match(r"module\d+_mpod\d+$", database):
                 formatted_data = get_mpod_data(database, measurement, variables)
+            elif (database, measurement) in cryostat_meas:
+                formatted_data = get_cryostat_data(glob.influxDB, glob.psqlDB, cryostat_meas[(database, measurement)], glob.subsample_interval, variables)
             else:
                 result_data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables))
                 formatted_data = result_data.format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
@@ -103,9 +106,11 @@ def get_influx_db_meas_vars(meas_name):
     return database, measurement, variables
 
 def get_tag(measurement_name, field_name, threshold):
-    database, measurement, variables = get_influx_db_meas_vars(measurement_name)
-
-    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    if measurement_name in glob.config_psql.get("cryostat_tag_dict", {}):
+        data = get_cryostat_data(glob.influxDB, glob.psqlDB, measurement_name, glob.subsample_interval)
+    else:
+        database, measurement, variables = get_influx_db_meas_vars(measurement_name)
+        data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
 
     tag = "bad"
     bad_values = []
@@ -124,11 +129,9 @@ def get_tag(measurement_name, field_name, threshold):
         tag = "good"
 
     return tag, bad_percent
-    #With psql:
-    # data = DataManager(glob.psqlDB.get_cryostat_data(table_prefix=glob.config_psql["cryo_table_prefix"], variable="LAr_level", tagid=glob.config_psql["cryostat_tag_dict"]["LAr_level"])).format(source="psql", variables=["LAr_level"], subsample_interval=glob.subsample_interval)
+
 def get_last_O2():
-    database, measurement, variables = get_influx_db_meas_vars("O2_ppb")
-    data = DataManager(glob.influxDB.fetch_measurement_data(database, measurement, variables)).format(source="influx", variables=variables, subsample_interval=glob.subsample_interval)
+    data = get_cryostat_data(glob.influxDB, glob.psqlDB, "O2_ppb", glob.subsample_interval)
     if data: return data[-1]
     else: return {'time': datetime.now(), 'magnitude': '0.0'}
 
@@ -146,6 +149,23 @@ def get_spellman_data(influxDB, psqlDB, subsample=None):
     if end > switch:
         psqlDB.set_time_range(max(start, switch), end)
         data += DataManager(psqlDB.get_dcs_data(config_psql["spellman_dcs_channel"])).format(source="psql", variables=variables, subsample_interval=subsample) or []
+        psqlDB.set_time_range(start, end)
+    return data
+
+def get_cryostat_data(influxDB, psqlDB, meas_name, subsample=None, influx_variables=None):
+    # cryostat readings moved from InfluxDB to the PostgreSQL tag historian; read each part of the time range from where it was logged
+    database, measurement, variables = SC_config["influxdb"]["influx_SC_special_dict"][meas_name]
+    config_psql = SC_config["psql"]
+    switch = parse_datetime(config_psql["cryostat_influx_to_psql_switch"], is_start=True)
+    start, end = influxDB.start, influxDB.end
+    data = []
+    if start < switch:
+        influxDB.set_time_range(start, min(end, switch))
+        data += DataManager(influxDB.fetch_measurement_data(database, measurement, influx_variables or variables)).format(source="influx", variables=influx_variables or variables, subsample_interval=subsample) or []
+        influxDB.set_time_range(start, end)
+    if end > switch:
+        psqlDB.set_time_range(max(start, switch), end)
+        data += DataManager(psqlDB.get_cryostat_data(config_psql["cryo_table_prefix"], meas_name, config_psql["cryostat_tag_dict"][meas_name])).format(source="psql", variables=variables, subsample_interval=subsample) or []
         psqlDB.set_time_range(start, end)
     return data
 

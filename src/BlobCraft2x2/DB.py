@@ -38,36 +38,26 @@ class PsqlDBManager:
         return url_template.format(**self.config)
 
     def get_years_months(self):
-        year_st = "{:04d}".format(self.start.year)
-        month_st = "{:02d}".format(self.start.month)
-
-        year_end = "{:04d}".format(self.end.year)
-        month_end = "{:02d}".format(self.end.month)
-
-        years = [year_st]
-        months = [month_st]
-        if year_st != year_end:
-            years.append(year_end)
-
-        if month_st != month_end:
-            months.append(month_end)
-
-        return years, months
+        year, month = self.start.year, self.start.month
+        years_months = []
+        while (year, month) <= (self.end.year, self.end.month):
+            years_months.append(("{:04d}".format(year), "{:02d}".format(month)))
+            year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+        return years_months
 
     def get_cryostat_data(self, table_prefix, variable, tagid):
         print(f"\nQuerying {variable} data from PostgreSQL Database")
 
         result_data = []
-        years, months = self.get_years_months() # we have to do this because cryostat data is split into multiple tables based on years and months. This should account for runs spanning across months or yeara
+        years_months = self.get_years_months() # we have to do this because cryostat data is split into multiple tables based on years and months. This should account for runs spanning across months or years
         start_utime = int(self.start.timestamp() * 1e3)
         end_utime = int(self.end.timestamp() * 1e3)
-        for y in years:
-            for m in months:
-                table_name = f"{table_prefix}_{y}_{m}"
-                tab = alc.table(table_name, alc.Column("t_stamp"), alc.Column("floatvalue"), alc.Column("tagid"))
-                query = alc.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(alc.and_(tab.c.tagid == str(tagid), tab.c.t_stamp >= str(int(start_utime)), tab.c.t_stamp <= str(int(end_utime))))
-                result = self.connection.execute(query)
-                result_data.extend(result.all())
+        for y, m in years_months:
+            table_name = f"{table_prefix}_{y}_{m}"
+            tab = alc.table(table_name, alc.Column("t_stamp"), alc.Column("floatvalue"), alc.Column("tagid"))
+            query = alc.select(tab.c.t_stamp, tab.c.floatvalue).select_from(tab).where(alc.and_(tab.c.tagid == str(tagid), tab.c.t_stamp >= str(int(start_utime)), tab.c.t_stamp <= str(int(end_utime)))).order_by(tab.c.t_stamp)
+            result = self.connection.execute(query)
+            result_data.extend(result.all())
         return result_data
 
     def get_purity_monitor_data(self, tablename, variables=[], last_value=False):
