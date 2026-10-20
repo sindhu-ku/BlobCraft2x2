@@ -192,7 +192,7 @@ def get_data_2x2():
     electron_lifetime = glob.psqlDB.get_purity_monitor_data(tablename=glob.config_psql["purity_mon_table"], variables=["prm_lifetime"], last_value=True)
     set_voltage = get_spellman_hv()
     mod_voltages = get_mod_voltages()
-    electric_fields = mod_voltages/(1e3*glob.config_influx["drift_dist"])
+    electric_fields = mod_voltages*1e3/glob.config_influx["drift_dist"] # kV -> V/cm
 
     return {
         "Gizmo_grounding": {
