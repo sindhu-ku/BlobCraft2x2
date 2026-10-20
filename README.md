@@ -1,5 +1,5 @@
 Authors: Sindhujha Kumaran (s.kumaran@uci.edu), Matt Kramer (mkramer@lbl.gov)
-## Query different subsystem databases and save them to JSON blobs
+## The CRAFT of querying different subsystem databases and saving them to JSON BLOBS
 Pre-requisites (the VPN, tunnel and credentials are only needed for slow controls, `SC_query`):
 - Fermilab VPN
 - Tunnel into acd-daq05 for accessing influxdb: `ssh -L 8087:acd-daq05-priv:8086 acdcs@acd-gw05.fnal.gov` (make sure you have an account on acdcs)
