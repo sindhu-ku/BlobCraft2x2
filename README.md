@@ -1,5 +1,5 @@
 Authors: Sindhujha Kumaran (s.kumaran@uci.edu), Matt Kramer (mkramer@lbl.gov)
-## The CRAFT of querying different subsystem databases and saving them to JSON BLOBS
+## The CRAFT of querying different subsystem databases and saving them to JSON BLOBS (and sqlite files)
 Started with 2x2, but is currently used for all ND prototypes.
 
 Pre-requisites (the VPN, tunnel and credentials are only needed for slow controls, `SC_query`):
