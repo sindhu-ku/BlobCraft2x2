@@ -26,6 +26,7 @@ pip3 install .
 ```
 
 Symlink the appropriate config directory:
+- For 2x2 run2: `ln -s configs/2x2_run2 config`
 - For 2x2: `ln -s configs/2x2 config`
 - For FSD: `ln -s configs/FSD config`
 

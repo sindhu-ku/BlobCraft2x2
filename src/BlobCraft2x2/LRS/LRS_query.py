@@ -30,7 +30,8 @@ def LRS_blob_maker(run, start=None, end=None, dump_all_data=False):
             meta_columns = sqlite.get_column_names('lrs_runs_data')
             moas_columns = sqlite.get_column_names('moas_versions')
 
-        meta_rows = sqlite.query_data(table_name='lrs_runs_data', conditions=[f"morcs_run_nr=={run}", f"subrun=={subrun}"], columns=meta_columns)
+        db_subrun = config.get('db_subrun_factor', 0) * run + subrun
+        meta_rows = sqlite.query_data(table_name='lrs_runs_data', conditions=[f"morcs_run_nr=={run}", f"subrun=={db_subrun}"], columns=meta_columns)
         data = [dict(zip(meta_columns, row)) for row in meta_rows]
 
 

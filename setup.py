@@ -26,7 +26,8 @@ setup(
         'pandas',
         'numpy',
         'python-dateutil',
-        'h5py'
+        'h5py',
+        'openpyxl'
     ],
     python_requires='>=3.9',
 )

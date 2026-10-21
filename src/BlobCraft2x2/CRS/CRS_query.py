@@ -4,6 +4,7 @@ import argparse
 import io
 import json
 from pathlib import Path
+import re
 import sys
 import tarfile
 
@@ -28,11 +29,9 @@ def get_daq_config(f: h5py.File):
     try:
         stream = io.BytesIO(np.array(f['daq_configs']).data)
         with tarfile.open(fileobj=stream) as tarf:
-            rootname = tarf.getmembers()[0].name
-            # TODO: Instead of a hardcoded chip_id, draw from the asic_configs
-            # directory listing.
-            chip_id ='1-1-11'
-            path = f'{rootname}/asic_configs/config_{chip_id}.json'
+            rex = r'asic_configs/config_[0-9-]+\.json'
+            path = next(m.name for m in tarf.getmembers()
+                        if re.search(rex, m.name))
             config = json.load(tarf.extractfile(path))
             return {k: config.get(k, -1) for k in keys}
     except:
