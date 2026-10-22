@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+from datetime import datetime
+import sqlite3
 import pandas as pd
 from ..DataManager import dump
 from ..DB import IFBeamManager
@@ -9,6 +11,7 @@ from .. import IFbeam_config
 
 config = IFbeam_config
 manager = IFBeamManager(config)
+spill_store = config.get('spill_store', 'output/beam_spills.sqlite') # filled by scripts/update_spills.py
 
 def calculate_total_pot(df_pot):
     if df_pot.empty:
@@ -23,22 +26,40 @@ def calculate_total_pot(df_pot):
 
     return value, first_time, last_time, first_clock, last_clock, devices
 
-def get_POT(start, end, total=False, device=None):
+def query_spills(start, end, device=None):
     manager.set_time_range(start=start, end=end)
-    # One POT reading per spill: the first device with a reading above pot_threshold (as in ND_CAFMaker), or only the given device
+    # One reading per beam cycle, also below pot_threshold (no beam)
     dfs = []
     for priority, dev in enumerate([device] if device else config['pot_device_names']):
         df = manager.get_data(dev, combine_unit=True)
         if not df.empty: dfs.append(df.assign(device=dev, priority=priority))
     df_pot = pd.concat(dfs) if dfs else pd.DataFrame(columns=['time', 'clock', 'value', 'device', 'priority'])
-    df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])]
+    df_pot = df_pot.dropna(subset=['value'])
     if not df_pot.empty:
-        # Readings from different devices closer than spill_match_dt belong to the same spill
+        # Readings from different devices closer than spill_match_dt belong to the same cycle
         df_pot['time_dt'] = pd.to_datetime(df_pot['time'], utc=True, format='ISO8601') # some times have no fractional seconds
         df_pot = df_pot.sort_values('time_dt')
         spill = (df_pot['time_dt'].diff() > pd.Timedelta(seconds=float(config['spill_match_dt']))).cumsum()
-        df_pot = df_pot.assign(spill=spill.values).sort_values(['spill', 'priority']).groupby('spill').head(1)
-    df_pot = df_pot[['time', 'clock', 'value', 'device']].reset_index(drop=True)
+        no_beam = df_pot['value'] <= float(config['pot_threshold'])
+        df_pot = df_pot.assign(spill=spill.values, no_beam=no_beam.values).sort_values(['spill', 'no_beam', 'priority']).groupby('spill').head(1)
+    return df_pot[['time', 'clock', 'value', 'device']].reset_index(drop=True)
+
+def get_POT(start, end, total=False, device=None):
+    # From the spill store if it covers start to end, otherwise from IFbeam
+    df_pot = None
+    if device is None:
+        t0, t1 = parse_datetime(start, is_start=True), parse_datetime(end, is_start=True) # is_start: keep midnight as is
+        try:
+            with sqlite3.connect(f'file:{spill_store}?mode=ro', uri=True) as db:
+                info = dict(db.execute('SELECT key, value FROM store_info').fetchall())
+                if datetime.fromisoformat(info['start']) <= t0 and t1 <= datetime.fromisoformat(info['until']):
+                    df_pot = pd.read_sql_query('SELECT time, clock, value, device FROM spills WHERE clock >= ? AND clock <= ? ORDER BY clock', db,
+                                               params=(int(t0.timestamp() * 1e3), int(t1.timestamp() * 1e3)))
+        except (sqlite3.Error, KeyError): # no store yet
+            pass
+    if df_pot is None:
+        df_pot = query_spills(start, end, device=device)
+    df_pot = df_pot[df_pot['value'] > float(config['pot_threshold'])].reset_index(drop=True)
     if total:
         return calculate_total_pot(df_pot)
     else:

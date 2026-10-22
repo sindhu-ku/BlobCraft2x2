@@ -41,6 +41,31 @@ def get_daq_config(f: h5py.File):
         return {k: -1 for k in keys}
 
 
+def get_data_stream(path: Path):
+    # metacat metadata, declared by morcs run control
+    try:
+        with open(path.with_name(path.name + '.json')) as f:
+            return json.load(f)['metadata'].get('core.data_stream')
+    except (OSError, ValueError, KeyError):
+        return None
+
+
+def count_ext_triggers(f: h5py.File, io_group, block=100000):
+    # count beam triggers for uptime
+    io_groups = f['msg_headers'][:]['io_groups'] 
+    idx = np.flatnonzero(io_groups == io_group)
+    msgs = f['msgs']
+    n = 0
+    for start in range(0, len(io_groups), block):
+        sel = idx[(idx >= start) & (idx < start + block)] - start
+        if not len(sel): continue
+        for msg in msgs[start:start + block][sel]:
+            msg = msg.tobytes()
+            if msg[0] == ord('D'):
+                n += msg[8::16].count(ord('T'))
+    return n
+
+
 def CRS_blob_maker(run):
     print(f"\n----------------------------------------Fetching CRS data for the run {run}----------------------------------------")
 
@@ -76,6 +101,12 @@ def CRS_blob_maker(run):
             info['msg_rate'] = msg_rate
 
             info.update(get_daq_config(f))
+
+            info['data_stream'] = get_data_stream(path)
+
+            if 'beam_trigger_io_group' in config: # -1: not counted, only physics data is
+                info['N_beam_triggers'] = count_ext_triggers(f, config['beam_trigger_io_group']) \
+                    if info['data_stream'] == 'physics' else -1
 
             if IFbeam_config['enabled']:
                 info['beam_summary'] = get_beam_summary(info['start_time'],
