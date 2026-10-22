@@ -1,0 +1,9 @@
+enabled: true
+
+url: 'dbdata3vm.fnal.gov:9443/ifbeam/data/data?'
+event: 'e,a9'
+pot_device_names: ['E:TRTGTD', 'E:TOR101'] # per spill, the first device with a reading above pot_threshold is used (as in ND_CAFMaker)
+spill_match_dt: 0.1 # seconds; readings from different devices closer than this belong to the same spill
+pot_threshold: 2.0E12
+uptime_start: "2026-10-21 02:01:44.179" # first NuMI spill of run 3 (CDT); detector uptime counts spills and CRS beam triggers from here (scripts/update_uptime.py)
+uptime_max_lag: 10 # minutes; if the last CRS subrun ended longer ago than this, spills are counted up to now

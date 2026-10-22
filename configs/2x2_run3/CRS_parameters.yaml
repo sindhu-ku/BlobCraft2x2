@@ -1,0 +1,8 @@
+enabled: true
+
+filename: "config/crs_runs.db"
+
+beam_trigger_io_group: 5 # ext triggers on this io_group are counted as N_beam_triggers in physics subruns, -1 in others
+
+# for generating the above
+data_dir: "TODO" # run-3 CRS data on acdaq5
