@@ -2,7 +2,7 @@ enabled: true
 
 filename: "config/crs_runs.db"
 
-beam_trigger_io_group: 5 # ext triggers on this io_group are counted as N_beam_triggers in physics subruns, -1 in others
+beam_trigger_io_group: 2 #iogroups 1,2,3,4,7 should receive the direct $74 beam trigger without LRS
 
 # for generating the above
 data_dir: "TODO" # run-3 CRS data on acdaq5
